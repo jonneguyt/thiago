@@ -79,6 +79,12 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 .tile h2 { margin: auto 0 0; font-size: 34px; line-height: 1; }
 .tile p { margin: 0; color: var(--ink-soft); font-size: 18px; line-height: 1.2; }
 .tile img.peek { position: absolute; right: 4px; bottom: 6px; width: 140px; }
+.mission { background: var(--paper); border-radius: 999px; padding: 10px 20px; font-size: 19px; box-shadow: 0 4px 0 var(--shadow); align-self: flex-start; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mdots { display: inline-flex; gap: 6px; }
+.mdots i { width: 18px; height: 18px; border-radius: 50%; background: #dbe3f0; display: block; }
+.mdots i.on { background: var(--green); }
+.tile .lvl { display: inline-flex; align-items: center; gap: 8px; }
+.tile .done { background: var(--green); color: #fff; border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; font-size: 18px; }
 .chip .ball { width: 28px; height: 28px; }
 @media (max-width: 420px) { .tile { padding-right: 110px; } .tile img.peek { width: 100px; } }
 .tile .lvl { position: absolute; top: 14px; right: 16px; }
@@ -503,6 +509,17 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     }
   };
 
+  // ---------- daily mission ----------
+  const RECENT = {};
+  const daily = () => { if (!S.daily || S.daily.date !== today()) S.daily = { date: today(), done: {}, bonus: false }; return S.daily; };
+  const today_ = key => daily().done[key];
+  const missionHTML = () => {
+    const d = daily();
+    const n = Object.keys(GAMES).filter(k => d.done[k]).length;
+    return d.bonus ? `<b>Dagmissie klaar!</b> Morgen weer een nieuwe.`
+      : `<b>Dagmissie:</b> vang een Pokémon in alle 4 de spellen <span class="mdots">${Object.keys(GAMES).map(k => `<i class="${d.done[k] ? 'on' : ''}"></i>`).join('')}</span> ${n}/4`;
+  };
+
   // ---------- screens ----------
   function home() {
     stopAll();
@@ -514,14 +531,15 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         <button class="chip" id="dexbtn">${ballHTML()} ${S.caught.length} / ${POKE.length}</button>
         <button class="chip" id="mute" aria-label="geluid">${S.mute ? '🔇' : '🔊'}</button>
       </header>
+      <div class="mission">${missionHTML()}</div>
       <div class="tiles"></div>
       <button class="chip" id="ouders" style="align-self:flex-start;font-size:16px">📈 Voortgang voor ouders</button>
-      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 5 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag; tik in het spel op de bolletjes om het zelf te kiezen.</p>
+      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 5 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag en is in te stellen bij Voortgang voor ouders. Een vraag komt pas terug na een stuk of acht andere. Dagmissie: in alle vier de spellen een Pokémon vangen geeft een bonus-Pokémon.</p>
     </section>`);
     const tiles = el.querySelector('.tiles');
     for (const [key, g] of Object.entries(GAMES)) {
       const t = $(`<button class="tile">
-        <span class="lvl">${dotsHTML(S.lvl[key], g.maxLvl)}</span>
+        <span class="lvl">${today_(key) ? '<b class="done">✓</b>' : ''}${dotsHTML(S.lvl[key], g.maxLvl)}</span>
         <span class="art">${key === 'klank' && S.focus ? S.focus + '…' : g.art}</span>
         <h2>${g.title}</h2><p>${key === 'klank' && S.focus ? `Letter van de week: ${S.focus}` : g.sub}</p>
         <img class="peek" src="${IMG}${g.peek}.png" alt="">
@@ -542,7 +560,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       <div class="bar">
         <button class="round" id="back" aria-label="terug">🏠</button>
         <div class="stars">${Array.from({ length: 5 }, () => ballHTML()).join('')}</div>
-        <button class="lvlbtn" id="lvl"></button>
+        <span class="lvlbtn" id="lvl"></span>
       </div>
       <h2 class="question"><span id="q"></span><button class="round say" id="again" aria-label="nog eens horen">🔊</button></h2>
       <div class="stage" id="stage"></div>
@@ -551,14 +569,16 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     const stage = el.querySelector('#stage'), answers = el.querySelector('#answers');
     const lvlBtn = el.querySelector('#lvl');
     const paintLvl = () => { lvlBtn.innerHTML = `${dotsHTML(S.lvl[key], g.maxLvl)} ${g.levelText[S.lvl[key] - 1]}`; };
-    lvlBtn.onclick = () => { S.lvl[key] = S.lvl[key] % g.maxLvl + 1; save(); paintLvl(); next(); };
     el.querySelector('#back').onclick = () => show(home());
     let cur;
     el.querySelector('#again').onclick = () => cur && say(...cur.spoken);
 
     function next() {
       misses = 0;
-      cur = g.make(S.lvl[key]);
+      // a question only comes back after about 8 others
+      const recent = RECENT[key] || (RECENT[key] = []);
+      for (let i = 0; i < 40; i++) { cur = g.make(S.lvl[key]); if (!recent.includes(cur.item)) break; }
+      recent.push(cur.item); if (recent.length > 8) recent.shift();
       el.querySelector('#q').innerHTML = cur.q;
       cur.render(stage);
       answers.innerHTML = '';
@@ -601,8 +621,16 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     const left = POKE.filter(p => !S.caught.includes(p[0]));
     const [id, name] = left.length ? pick(left) : pick(POKE);
     const isNew = !S.caught.includes(id);
-    if (isNew) { S.caught.push(id); save(); }
-    logCatch(key);
+    if (isNew) { S.caught.push(id); }
+    let missionDone = false;
+    if (key !== 'bonus') {
+      const d = daily();
+      d.done[key] = true;
+      missionDone = !d.bonus && Object.keys(GAMES).every(k => d.done[k]);
+      if (missionDone) d.bonus = true;
+    }
+    save();
+    if (key !== 'bonus') logCatch(key);
     const el = $(`<section class="screen catch">
       <h2>Er zit iets in de Pokébal…</h2>
       <span class="ball big wobble"></span>
@@ -614,10 +642,17 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       el.querySelector('h2').textContent = isNew ? `Je hebt ${name} gevangen!` : `${name} kwam weer langs!`;
       say(isNew ? `Hoera! Je hebt ${name} gevangen!` : `${name} kwam weer langs!`);
       const row = el.querySelector('.row');
-      const again = $(`<button class="go">Nog een keer</button>`); again.onclick = () => show(game(key));
       const dexb = $(`<button class="go alt">Mijn Pokédex</button>`); dexb.onclick = dex;
-      const homeb = $(`<button class="go alt">🏠</button>`); homeb.onclick = () => show(home());
-      row.append(again, dexb, homeb);
+      const homeb = $(`<button class="go alt">🏠 Ander spel</button>`); homeb.onclick = () => show(home());
+      if (missionDone) {
+        const bonus = $(`<button class="go">🎁 Bonus!</button>`); bonus.onclick = () => show(catchScreen('bonus'));
+        row.append(bonus);
+        setTimeout(() => say('Dagmissie klaar! Je krijgt een bonus Pokémon!'), 2600);
+      } else if (key !== 'bonus') {
+        const again = $(`<button class="go">Nog een keer</button>`); again.onclick = () => show(game(key));
+        row.append(again);
+      }
+      row.append(dexb, homeb);
     }, 1900);
     return el;
   }
@@ -653,6 +688,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         </label>
       </div>
       <p class="parent" id="voicediag"></p>
+      <div class="settings">${Object.entries(GAMES).map(([k, g]) => `<label>${g.title}<select data-lvl="${k}">${g.levelText.map((t, i) => `<option value="${i + 1}">${i + 1}: ${t}</option>`).join('')}</select></label>`).join('')}</div>
       <div class="settings" id="wipe">
         <button class="chip" id="wipetoday">Wis vandaag</button>
         <button class="chip" id="wipeall">Wis alles</button>
@@ -673,6 +709,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     sel.onchange = () => { S.voiceName = sel.value; save(); if (S.voiceName === 'builtin') loadClips(); pickVoice(); say('Hoi Thiago!', 'Hoeveel Pikachu zie je?'); };
     panel.querySelector('#voicetest').onclick = () => { if (S.mute) { S.mute = false; save(); } say('Hoi Thiago!', 'Hoeveel Pikachu zie je?'); };
     fill(); setTimeout(fill, 800);
+    panel.querySelectorAll('[data-lvl]').forEach(ls => { ls.value = S.lvl[ls.dataset.lvl]; ls.onchange = () => { S.lvl[ls.dataset.lvl] = +ls.value; save(); }; });
     const fsel = panel.querySelector('#focussel');
     fsel.value = S.focus || '';
     fsel.onchange = () => { S.focus = fsel.value; save(); };
