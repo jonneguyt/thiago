@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pokéwereld">
+<link rel="apple-touch-icon" href="img/25.png">
+<link rel="icon" href="img/25.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Thiago's Pokéwereld</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@500;700;800&display=swap">
+<style>
+/* Layout: one screen at a time (home, game, catch, pokédex), big touch targets sized for an iPad held by a 5-year-old. Single bright look on purpose. */
+:root {
+  --sky: #dff0ff;
+  --sky-deep: #b9dcfb;
+  --paper: #ffffff;
+  --ink: #1b2a4a;
+  --ink-soft: #5a6b8c;
+  --red: #e3350d;
+  --yellow: #ffcb05;
+  --blue: #2a75bb;
+  --green: #3fae5a;
+  --grass: #8fd16a;
+  --shadow: rgba(27, 42, 74, .18);
+  --ui: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --read: "Andika", "Comic Sans MS", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: linear-gradient(var(--sky) 0 72%, var(--grass) 72% 100%) fixed;
+  background-color: var(--sky);
+  color: var(--ink);
+  font-family: var(--ui);
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+  overflow-x: hidden;
+}
+.screen {
+  min-height: 100%;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 24px;
+  display: flex; flex-direction: column; gap: 16px;
+  max-width: 1100px; margin: 0 auto;
+}
+button { font: inherit; color: inherit; border: 0; cursor: pointer; }
+button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
+
+/* ---------- home ---------- */
+.hello { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hello img { width: 84px; height: 84px; }
+.hello h1 { margin: 0; font-size: clamp(32px, 6vw, 56px); line-height: 1; font-weight: 800; letter-spacing: -.5px; text-wrap: balance; }
+.hello h1 span { color: var(--red); }
+.hello .spacer { flex: 1; }
+.chip {
+  background: var(--paper); border-radius: 999px; padding: 10px 18px;
+  font-weight: 700; font-size: 20px; display: inline-flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 0 var(--shadow);
+}
+.chip:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.tile {
+  background: var(--paper); border-radius: 28px; padding: 18px 18px 14px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left;
+  box-shadow: 0 8px 0 var(--shadow); min-height: 200px; padding-right: 150px; position: relative; overflow: hidden;
+}
+.tile:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--shadow); }
+.tile .art { font-family: var(--read); font-weight: 700; font-size: 64px; line-height: 1.1; color: var(--blue); }
+.tile h2 { margin: auto 0 0; font-size: 34px; line-height: 1; }
+.tile p { margin: 0; color: var(--ink-soft); font-size: 18px; line-height: 1.2; }
+.tile img.peek { position: absolute; right: 4px; bottom: 6px; width: 140px; }
+.chip .ball { width: 28px; height: 28px; }
+@media (max-width: 420px) { .tile { padding-right: 110px; } .tile img.peek { width: 100px; } }
+.tile .lvl { position: absolute; top: 14px; right: 16px; }
+.dots { display: inline-flex; gap: 4px; }
+.dots i { width: 12px; height: 12px; border-radius: 50%; background: #dbe3f0; display: block; }
+.dots i.on { background: var(--yellow); box-shadow: inset 0 0 0 2px #e0a800; }
+.parent { color: var(--ink-soft); font-size: 15px; line-height: 1.3; max-width: 65ch; }
+
+/* ---------- game ---------- */
+.bar { display: flex; align-items: center; gap: 10px; }
+.round { width: 64px; height: 64px; border-radius: 50%; background: var(--paper); font-size: 30px; display: grid; place-items: center; box-shadow: 0 4px 0 var(--shadow); flex: none; }
+.round:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+.stars { flex: 1; display: flex; justify-content: center; gap: 8px; }
+.stars .ball { width: 40px; height: 40px; opacity: .25; transition: opacity .3s, transform .3s; }
+.stars .ball.on { opacity: 1; transform: scale(1.15) rotate(-12deg); }
+.lvlbtn { background: var(--paper); border-radius: 999px; padding: 8px 14px; box-shadow: 0 4px 0 var(--shadow); font-weight: 700; font-size: 16px; display: inline-flex; gap: 8px; align-items: center; }
+.question {
+  font-size: clamp(26px, 4.4vw, 40px); font-weight: 800; text-align: center; line-height: 1.15; margin: 0;
+  display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; text-wrap: balance;
+}
+.question .say { width: 52px; height: 52px; font-size: 24px; }
+.stage {
+  background: var(--paper); border-radius: 32px; padding: 20px; min-height: 280px;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px;
+  box-shadow: 0 8px 0 var(--shadow); flex: 1;
+}
+.answers { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.ans {
+  min-width: 130px; min-height: 120px; padding: 8px 22px; border-radius: 28px;
+  background: var(--yellow); box-shadow: 0 8px 0 #c99a00; font-size: 64px; font-weight: 800; line-height: 1;
+}
+.ans.letter, .ans.word { font-family: var(--read); font-weight: 700; }
+.ans.pic { background: var(--paper); box-shadow: 0 8px 0 var(--shadow); font-size: 80px; min-width: 150px; min-height: 140px; }
+.ans:active { transform: translateY(6px); box-shadow: 0 2px 0 #c99a00; }
+.ans.wrong { background: #e6e9f0; box-shadow: 0 8px 0 #c3c9d6; color: #9aa4b8; animation: shake .4s; pointer-events: none; }
+.ans.pic.wrong { opacity: .35; }
+.ans.right { background: var(--green); color: #fff; box-shadow: 0 8px 0 #2a7d3e; animation: pop .4s; }
+@keyframes shake { 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
+@keyframes pop { 50% { transform: scale(1.15); } }
+
+/* counting */
+.mon { width: clamp(64px, 11vw, 104px); aspect-ratio: 1; max-width: 100%; position: relative; background: none; padding: 0; transition: transform .15s; }
+.mon img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.mon.counted img { filter: saturate(.3) opacity(.6); }
+.mon b { position: absolute; inset: auto 0 -4px auto; background: var(--blue); color: #fff; border-radius: 999px; min-width: 36px; height: 36px; display: grid; place-items: center; font-size: 22px; }
+/* sums */
+.sum { display: flex; align-items: center; justify-content: center; gap: 14px 22px; flex-wrap: wrap; }
+.group { display: grid; grid-template-columns: repeat(5, auto); gap: 6px; padding: 10px; border-radius: 18px; background: var(--sky); }
+.group .ball { width: clamp(34px, 5.6vw, 52px); height: clamp(34px, 5.6vw, 52px); }
+.group .ball.gone { opacity: .25; position: relative; }
+.op { font-size: 72px; font-weight: 800; color: var(--blue); line-height: 1; }
+.eq { font-size: clamp(54px, 9vw, 88px); font-weight: 800; width: 100%; text-align: center; line-height: 1; letter-spacing: 2px; }
+.eq .q { color: var(--red); }
+/* words */
+.big-emoji { font-size: clamp(120px, 22vw, 200px); line-height: 1; }
+.big-word { font-family: var(--read); font-weight: 700; font-size: clamp(90px, 16vw, 150px); line-height: 1; letter-spacing: 6px; color: var(--ink); background: none; padding: 0 12px; }
+.big-word .first { color: var(--red); }
+.big-word .g { display: inline-block; transition: transform .2s, color .2s; }
+.big-word .g.lit { color: var(--blue); transform: translateY(-8px); }
+.big-word.whole .g { color: var(--ink); transform: none; }
+.big-word.whole .g.first { color: var(--red); }
+.hint { width: 100%; text-align: center; color: var(--ink-soft); font-size: 18px; }
+
+/* pokéball drawn in CSS */
+.ball { display: inline-block; border-radius: 50%; position: relative; flex: none;
+  background: linear-gradient(var(--red) 0 44%, var(--ink) 44% 56%, #fff 56%);
+  box-shadow: inset 0 0 0 3px var(--ink); }
+.ball::after { content: ""; position: absolute; inset: 34%; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px var(--ink); }
+
+/* ---------- catch ---------- */
+.catch { align-items: center; justify-content: center; text-align: center; }
+.catch h2 { font-size: clamp(34px, 6vw, 56px); margin: 0; line-height: 1.05; text-wrap: balance; }
+.catch .big { width: 140px; height: 140px; }
+.catch .big.wobble { animation: wobble 1.8s ease-in-out; }
+.catch img.new { width: min(300px, 70vw); max-width: 100%; animation: appear .6s cubic-bezier(.3,1.6,.5,1); }
+@keyframes wobble { 0%,100% { transform: rotate(0); } 15% { transform: rotate(-22deg); } 30% { transform: rotate(18deg); } 45% { transform: rotate(-14deg); } 60% { transform: rotate(10deg); } 75% { transform: rotate(0); } }
+@keyframes appear { from { transform: scale(0); } to { transform: scale(1); } }
+.row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.go { background: var(--red); color: #fff; font-size: 30px; font-weight: 800; padding: 14px 30px; border-radius: 999px; box-shadow: 0 6px 0 #9c2408; }
+.go.alt { background: var(--paper); color: var(--ink); box-shadow: 0 6px 0 var(--shadow); }
+.go:active { transform: translateY(5px); box-shadow: 0 1px 0 #9c2408; }
+
+/* ---------- pokédex ---------- */
+.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+.dex div { background: var(--paper); border-radius: 22px; padding: 10px 6px 8px; text-align: center; box-shadow: 0 4px 0 var(--shadow); }
+.dex img { width: 100%; aspect-ratio: 1; max-width: 100%; object-fit: contain; }
+.dex .no img { filter: brightness(0) opacity(.18); }
+.dex span { display: block; font-weight: 700; font-size: 17px; line-height: 1.1; }
+.dex .no span { color: transparent; }
+.dex button { background: none; padding: 0; width: 100%; }
+
+/* ---------- parents ---------- */
+.report { background: var(--paper); border-radius: 28px; padding: 20px; box-shadow: 0 8px 0 var(--shadow); display: flex; flex-direction: column; gap: 16px; -webkit-user-select: text; user-select: text; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.kpi { background: var(--sky); border-radius: 18px; padding: 10px 14px; display: flex; flex-direction: column; }
+.kpi span { font-size: 15px; color: var(--ink-soft); }
+.kpi b { font-size: 26px; line-height: 1.1; }
+.kpi small { font-size: 14px; color: var(--ink-soft); }
+.tablewrap { overflow-x: auto; }
+.report table { border-collapse: collapse; width: 100%; font-size: 17px; font-variant-numeric: tabular-nums; }
+.report th { text-align: left; font-size: 14px; color: var(--ink-soft); font-weight: 700; padding: 6px 10px; border-bottom: 2px solid var(--sky-deep); white-space: nowrap; }
+.report td { padding: 6px 10px; border-bottom: 1px solid var(--sky); vertical-align: top; white-space: nowrap; }
+.report td small { color: var(--ink-soft); }
+.report h3 { margin: 0; font-size: 22px; }
+.settings { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+.settings label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 15px; color: var(--ink-soft); min-width: 0; }
+.chip.danger { background: var(--red); color: #fff; }
+#wipe .chip { font-size: 16px; }
+.voice select { font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 14px; border: 2px solid var(--sky-deep); background: var(--paper); color: var(--ink); max-width: 100%; min-width: 0; }
+.tag { display: inline-block; border-radius: 999px; padding: 2px 10px; font-weight: 700; font-size: 15px; }
+.tag-easy { background: #d8f2dd; color: #1f6b33; }
+.tag-hard { background: #ffe9b8; color: #7a5200; }
+.tag-try { background: var(--sky); color: var(--ink-soft); }
+.misses { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; font-size: 17px; }
+.misses span { color: var(--ink-soft); font-size: 14px; display: inline-block; min-width: 82px; }
+
+@media (max-width: 520px) {
+  .ans { min-width: 92px; min-height: 92px; font-size: 48px; }
+  .ans.pic { min-width: 100px; min-height: 100px; font-size: 58px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<main id="app"></main>
+
+<script>
+(() => {
+  const IMG = 'img/';
+  const POKE = [
+    [25,'Pikachu'],[1,'Bulbasaur'],[4,'Charmander'],[7,'Squirtle'],[133,'Eevee'],[39,'Jigglypuff'],
+    [54,'Psyduck'],[52,'Meowth'],[143,'Snorlax'],[175,'Togepi'],[172,'Pichu'],[129,'Magikarp'],
+    [132,'Ditto'],[79,'Slowpoke'],[37,'Vulpix'],[94,'Gengar'],[6,'Charizard'],[149,'Dragonite'],
+    [151,'Mew'],[152,'Chikorita'],[155,'Cyndaquil'],[158,'Totodile'],[252,'Treecko'],[255,'Torchic'],
+    [258,'Mudkip'],[393,'Piplup'],[448,'Lucario'],[722,'Rowlet'],[725,'Litten'],[728,'Popplio'],
+    [906,'Sprigatito'],[909,'Fuecoco'],[912,'Quaxly'],[196,'Espeon'],[197,'Umbreon'],[470,'Leafeon'],
+    [471,'Glaceon'],[700,'Sylveon']
+  ];
+  const nameOf = id => (POKE.find(p => p[0] === id) || [0, 'Pokémon'])[1];
+
+  // Short, sound-pure Dutch words with a clear picture, split into graphemes (sounds).
+  // Level 1: three sounds with a short vowel (kat, vis). Level 2: long vowels, two-letter sounds and four-sound words.
+  const WORDS = [
+    ['vis','🐟','v-i-s'],['kat','🐱','k-a-t'],['bus','🚌','b-u-s'],['pen','🖊️','p-e-n'],['pet','🧢','p-e-t'],
+    ['bal','⚽','b-a-l'],['lam','🐑','l-a-m'],['lip','👄','l-i-p'],['bel','🔔','b-e-l'],['zon','☀️','z-o-n'],
+    ['pan','🍳','p-a-n'],['tas','👜','t-a-s'],['bok','🐐','b-o-k'],['bot','🦴','b-o-t'],['net','🥅','n-e-t'],
+    ['kip','🐔','k-i-p'],['sok','🧦','s-o-k'],['rok','👗','r-o-k'],['jas','🧥','j-a-s'],['vos','🦊','v-o-s'],
+    ['kok','🧑‍🍳','k-o-k'],['man','👨','m-a-n'],['kus','💋','k-u-s'],['hut','🛖','h-u-t'],['wol','🧶','w-o-l'],
+    ['pil','💊','p-i-l'],['sap','🧃','s-a-p'],
+    ['maan','🌙','m-aa-n',2],['raam','🪟','r-aa-m',2],['boom','🌳','b-oo-m',2],['boot','⛵','b-oo-t',2],
+    ['boek','📖','b-oe-k',2],['koe','🐮','k-oe',2],['roos','🌹','r-oo-s',2],['muis','🐭','m-ui-s',2],
+    ['vuur','🔥','v-uu-r',2],['kaas','🧀','k-aa-s',2],['been','🦵','b-ee-n',2],['neus','👃','n-eu-s',2],
+    ['voet','🦶','v-oe-t',2],['uil','🦉','ui-l',2],['duim','👍','d-ui-m',2],['ster','⭐','s-t-e-r',2],
+    ['lamp','💡','l-a-m-p',2],['slak','🐌','s-l-a-k',2],['melk','🥛','m-e-l-k',2],['palm','🌴','p-a-l-m',2],
+    ['tent','⛺','t-e-n-t',2],['wolk','☁️','w-o-l-k',2],['vork','🍴','v-o-r-k',2],['zeep','🧼','z-ee-p',2],
+    ['haan','🐓','h-aa-n',2],['beer','🐻','b-ee-r',2],['peer','🍐','p-ee-r',2],['kerk','⛪','k-e-r-k',2],
+    ['loep','🔍','l-oe-p',2],['ijs','🍦','ij-s',2],['ei','🥚','ei',2]
+  ].map(([w, e, g, lvl = 1]) => ({ w, e, g: g.split('-'), lvl }));
+  const wordsFor = lvl => WORDS.filter(x => x.lvl <= lvl);
+  const LETTERS = { 1: 'mnrvszbptkljhw'.split(''), 2: 'mnrvszbptkljhwd'.split('') };
+  // first-sound game only uses words that start with a single consonant
+  const startsWithConsonant = x => x.g[0].length === 1 && LETTERS[2].includes(x.g[0]);
+  const zoem = x => x.g.map(k => 'klank:' + k);
+  const wordHTML = (x, firstRed) => x.g.map((g, i) => `<span class="g${firstRed && i === 0 ? ' first' : ''}">${g}</span>`).join('');
+  // zoemen made visible: light up each sound in turn, then the whole word
+  const zoemShow = (el) => {
+    const gs = [...el.querySelectorAll('.g')];
+    el.classList.remove('whole'); gs.forEach(g => g.classList.remove('lit'));
+    gs.forEach((g, i) => setTimeout(() => g.classList.add('lit'), 150 + i * 550));
+    setTimeout(() => el.classList.add('whole'), 300 + gs.length * 550);
+  };
+
+  // ---------- storage ----------
+  const KEY = 'thiago-pokewereld-v1';
+  const fresh = () => ({ caught: [25], lvl: { tel: 1, som: 1, klank: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
+  let S = fresh();
+  try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch (e) {}
+  // Progress also goes to the artifact's shared store (when signed in on claude.ai), so a parent can check it from any device.
+  let db = null;
+  let saveTimer = null;
+  const save = () => {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+    if (!db) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => db.doc('progress/state').set({ caught: S.caught, lvl: S.lvl, updated: Date.now() }).catch(() => {}), 400);
+  };
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const dayCache = {};
+  let logChain = Promise.resolve();
+  // one document per day per game: totals plus the last few mistakes
+  const logAnswer = (key, ok, firstTry, item, picked) => {
+    if (!db) return;
+    logChain = logChain.then(async () => {
+      const id = `${today()}_${key}`;
+      const ref = db.collection('days').doc(id);
+      if (!dayCache[id]) {
+        const snap = await ref.get().catch(() => null);
+        dayCache[id] = (snap && snap.exists && { ...snap.data(), misses: [...(snap.data().misses || [])] }) || { date: today(), game: key, answered: 0, firstTry: 0, wrong: 0, catches: 0, misses: [] };
+      }
+      const d = dayCache[id];
+      if (ok) { d.answered++; if (firstTry) d.firstTry++; }
+      else { d.wrong++; d.misses = [...d.misses, `${item} → ${picked}`].slice(-30); }
+      d.level = S.lvl[key]; d.updated = Date.now();
+      await ref.set(d).catch(() => {});
+    });
+  };
+  const logCatch = (key) => {
+    if (!db) return;
+    logChain = logChain.then(async () => {
+      const id = `${today()}_${key}`;
+      const d = dayCache[id]; if (!d) return;
+      d.catches = (d.catches || 0) + 1;
+      await db.collection('days').doc(id).set(d).catch(() => {});
+    });
+  };
+
+  // ---------- speech ----------
+  // The iPad's own Dutch voice (Xander/Claire) by default. Built-in computer recordings (voice.json: phrase -> mp3,
+  // played with Web Audio) are an optional fallback for devices without a Dutch voice.
+  let clips = null, actx = null;
+  const decoded = {};
+  let playToken = 0, playing = null;
+  const loadClips = () => { if (!clips) fetch('voice.json').then(r => r.json()).then(j => { clips = j; }).catch(() => {}); };
+  if (S.voiceName === 'builtin') loadClips();
+  const unlock = () => {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state !== 'running') actx.resume();
+      // a silent buffer unlocks audio on iOS
+      const b = actx.createBuffer(1, 1, 22050), src = actx.createBufferSource(); src.buffer = b; src.connect(actx.destination); src.start(0);
+    } catch (e) {}
+  };
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('touchend', unlock, true);
+  const b64buf = b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+  const getBuf = key => decoded[key] || (decoded[key] = new Promise((res, rej) => actx.decodeAudioData(b64buf(clips[key]), res, rej)));
+  const stopAll = () => { playToken++; try { playing && playing.stop(); } catch (e) {} playing = null; if (window.speechSynthesis) speechSynthesis.cancel(); };
+
+  let voice = null;
+  const allVoices = () => (window.speechSynthesis ? speechSynthesis.getVoices() : []);
+  const dutchVoices = () => allVoices().filter(v => /^nl([-_]|$)/i.test(v.lang || ''));
+  const pickVoice = () => {
+    const vs = dutchVoices();
+    voice = (S.voiceName && allVoices().find(v => v.name === S.voiceName))
+         || vs.find(v => /nl[-_]NL/i.test(v.lang) && /(Premium|Enhanced|Verbeterd)/i.test(v.name))
+         || vs.find(v => /nl[-_]NL/i.test(v.lang) && /(Xander|Claire|Ellen|Google)/i.test(v.name))
+         || vs.find(v => /nl[-_]NL/i.test(v.lang)) || vs[0] || null;
+    return voice;
+  };
+  if (window.speechSynthesis) {
+    pickVoice(); speechSynthesis.onvoiceschanged = pickVoice;
+    let tries = 0; const poll = setInterval(() => { if (pickVoice() || ++tries > 20) clearInterval(poll); }, 250);
+  }
+  const deviceSay = text => {
+    if (!window.speechSynthesis) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) { u.voice = voice; u.lang = voice.lang.replace('_', '-'); } else u.lang = 'nl-NL';
+      u.rate = .88; speechSynthesis.speak(u);
+    } catch (e) {}
+  };
+  // say('Goed zo!', '7') plays each phrase in turn
+  const say = (...parts) => {
+    if (S.mute) return;
+    stopAll();
+    const useClips = S.voiceName === 'builtin' && clips && actx && parts.every(p => clips[p]);
+    // a device voice would read single sounds as letter names ("el"), so those are only shown, not spoken
+    if (!useClips) { if (!voice) pickVoice(); deviceSay(parts.filter(p => !p.startsWith('klank:')).join(' ')); return; }
+    const token = playToken;
+    (async () => {
+      try {
+        if (actx.state !== 'running') await actx.resume();
+        for (const p of parts) {
+          const buf = await getBuf(p);
+          if (token !== playToken) return;
+          await new Promise(done => {
+            const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination);
+            src.onended = done; playing = src; src.start(0);
+          });
+          if (token !== playToken) return;
+        }
+      } catch (e) {}
+    })();
+  };
+
+  // ---------- helpers ----------
+  const $ = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  const shuffle = arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const app = document.getElementById('app');
+  const ballHTML = (cls = '') => `<span class="ball ${cls}"></span>`;
+  const dotsHTML = (n, max) => `<span class="dots" aria-label="niveau ${n}">${Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+  const PRAISE = ['Goed zo!', 'Super!', 'Knap hoor!', 'Ja, goed!', 'Top!', 'Wauw!'];
+  const numberChoices = (n, lo, hi, count = 3) => {
+    const set = new Set([n]);
+    const near = shuffle([n - 1, n + 1, n - 2, n + 2, n + 3, n - 3].filter(x => x >= lo && x <= hi && x !== n));
+    for (const x of near) { if (set.size >= count) break; set.add(x); }
+    return shuffle([...set]);
+  };
+
+  // ---------- games ----------
+  const GAMES = {
+    tel: {
+      title: 'Tellen', sub: 'Hoeveel Pokémon zie je?', art: '1 2 3', peek: 25, maxLvl: 4,
+      levelText: ['tot 5', 'tot 10', 'tot 15', 'tot 20'],
+      make(lvl) {
+        const max = [5, 10, 15, 20][lvl - 1], min = lvl === 1 ? 1 : max - 7;
+        const n = rnd(min, max);
+        const id = pick(S.caught.length > 3 ? S.caught : POKE.slice(0, 8).map(p => p[0]));
+        const name = nameOf(id);
+        let counted = 0;
+        return {
+          q: `Hoeveel ${name} zie je?`, spoken: [`Hoeveel ${name} zie je?`],
+          answer: n, choices: numberChoices(n, 1, 20),
+          render(stage) {
+            stage.innerHTML = '';
+            for (let i = 0; i < n; i++) {
+              const b = $(`<button class="mon" aria-label="${name}"><img src="${IMG}${id}.png" alt=""></button>`);
+              b.style.transform = `rotate(${rnd(-12, 12)}deg)`;
+              b.onclick = () => { if (b.classList.contains('counted')) return; counted++; b.classList.add('counted'); b.append($(`<b>${counted}</b>`)); say(String(counted)); };
+              stage.append(b);
+            }
+            stage.append($(`<div class="hint">Tik op elke ${name} om mee te tellen.</div>`));
+          },
+          after: [String(n), name], item: `tel ${n}`
+        };
+      }
+    },
+    som: {
+      title: 'Sommen', sub: 'Plus en min met Pokéballen', art: '2 + 3', peek: 4, maxLvl: 5,
+      levelText: ['plus tot 5', 'plus tot 10', 'plus tot 20', 'min tot 10', 'min tot 20'],
+      make(lvl) {
+        let a, b, n, minus = lvl >= 4;
+        if (!minus) {
+          const max = [5, 10, 20][lvl - 1];
+          n = rnd(lvl === 1 ? 2 : 4, max); a = rnd(1, n - 1); b = n - a;
+          if (lvl === 3 && a < 10 && b < 10 && Math.random() < .5) { a = rnd(10, Math.min(15, n - 1)); b = n - a; }
+        } else {
+          const max = lvl === 4 ? 10 : 20;
+          a = rnd(3, max); b = rnd(1, Math.min(a - 1, lvl === 4 ? 5 : 9)); n = a - b;
+        }
+        const op = minus ? '−' : '+', word = minus ? 'min' : 'plus';
+        return {
+          q: `${a} ${word} ${b} is…?`, spoken: [`${a} ${word}`, `${b} is?`],
+          answer: n, choices: numberChoices(n, 0, 20),
+          render(stage) {
+            const group = (count, goneFrom = Infinity) => `<div class="group">${Array.from({ length: count }, (_, i) => ballHTML(i >= goneFrom ? 'gone' : '')).join('')}</div>`;
+            stage.innerHTML = '';
+            const sum = minus
+              ? $(`<div class="sum">${group(a, a - b)}</div>`)
+              : $(`<div class="sum">${group(a)}<span class="op">+</span>${group(b)}</div>`);
+            stage.append(sum);
+            stage.append($(`<div class="eq">${a} ${op} ${b} = <span class="q">?</span></div>`));
+            if (minus) stage.append($(`<div class="hint">${b} Pokéballen rollen weg. Hoeveel blijven er over?</div>`));
+          },
+          after: [`${a} ${word}`, `${b} is`, String(n)], item: `${a} ${op} ${b}`
+        };
+      }
+    },
+    klank: {
+      title: 'Eerste klank', sub: 'Met welke klank begint het?', art: 'v…', peek: 7, maxLvl: 2,
+      levelText: ['3 letters', '4 letters'],
+      make(lvl) {
+        let pool = wordsFor(lvl).filter(startsWithConsonant);
+        // letter of the week: about half of the words start with it
+        const focusWords = pool.filter(x => S.focus && x.g[0] === S.focus);
+        if (focusWords.length && Math.random() < .5) pool = focusWords;
+        const x = pick(pool), f = x.g[0];
+        const opts = new Set([f]);
+        for (const l of shuffle(LETTERS[lvl])) { if (opts.size >= lvl + 2) break; opts.add(l); }
+        return {
+          q: `Met welke klank begint dit woord?`, spoken: ['Met welke klank begint', x.w],
+          answer: f, choices: shuffle([...opts]), kind: 'letter',
+          render(stage) {
+            stage.innerHTML = '';
+            const pic = $(`<button class="big-emoji" style="background:none" aria-label="${x.w}">${x.e}</button>`);
+            pic.onclick = () => say(x.w);
+            stage.append(pic);
+            stage.append($(`<div class="hint">Tik op het plaatje om het woord te horen.</div>`));
+          },
+          after: [...zoem(x), x.w], item: `${x.w} (eerste klank)`,
+          reveal(stage) { const w = $(`<div class="big-word">${wordHTML(x, true)}</div>`); stage.querySelector('.hint').replaceWith(w); zoemShow(w); }
+        };
+      }
+    },
+    lees: {
+      title: 'Woordjes lezen', sub: 'Lees het woord, kies het plaatje', art: 'vis', peek: 54, maxLvl: 2,
+      levelText: ['korte woorden', 'langere woorden'],
+      make(lvl) {
+        let pool = WORDS.filter(x => x.lvl === lvl);
+        const focusWords = pool.filter(x => S.focus && x.w.includes(S.focus));
+        if (focusWords.length && Math.random() < .4) pool = focusWords;
+        const x = pick(pool);
+        const others = shuffle(WORDS.filter(o => o.w !== x.w)).slice(0, 2);
+        const choices = shuffle([x, ...others]);
+        return {
+          q: 'Welk plaatje hoort bij dit woord?', spoken: ['Lees het woord. Welk plaatje hoort erbij?'],
+          answer: x.w, choices: choices.map(c => c.w), labels: Object.fromEntries(choices.map(c => [c.w, c.e])), kind: 'pic',
+          render(stage) {
+            stage.innerHTML = '';
+            const w = $(`<button class="big-word" aria-label="woord">${wordHTML(x)}</button>`);
+            w.onclick = () => { zoemShow(w); say(...zoem(x), x.w); };
+            stage.append(w);
+            stage.append($(`<div class="hint">Lukt het niet? Tik op het woord en zoem mee.</div>`));
+          },
+          // after a wrong pick, sing the sounds so he can blend along
+          onWrong(stage) { setTimeout(() => { zoemShow(stage.querySelector('.big-word')); say(...zoem(x), x.w); }, 900); },
+          reveal(stage) { zoemShow(stage.querySelector('.big-word')); },
+          after: [...zoem(x), x.w], item: `lees ${x.w}`
+        };
+      }
+    }
+  };
+
+  // ---------- screens ----------
+  function home() {
+    stopAll();
+    const el = $(`<section class="screen">
+      <header class="hello">
+        <img src="${IMG}25.png" alt="">
+        <h1>Hoi <span>Thiago</span>!</h1>
+        <span class="spacer"></span>
+        <button class="chip" id="dexbtn">${ballHTML()} ${S.caught.length} / ${POKE.length}</button>
+        <button class="chip" id="mute" aria-label="geluid">${S.mute ? '🔇' : '🔊'}</button>
+      </header>
+      <div class="tiles"></div>
+      <button class="chip" id="ouders" style="align-self:flex-start;font-size:16px">📈 Voortgang voor ouders</button>
+      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 5 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag; tik in het spel op de bolletjes om het zelf te kiezen.</p>
+    </section>`);
+    const tiles = el.querySelector('.tiles');
+    for (const [key, g] of Object.entries(GAMES)) {
+      const t = $(`<button class="tile">
+        <span class="lvl">${dotsHTML(S.lvl[key], g.maxLvl)}</span>
+        <span class="art">${key === 'klank' && S.focus ? S.focus + '…' : g.art}</span>
+        <h2>${g.title}</h2><p>${key === 'klank' && S.focus ? `Letter van de week: ${S.focus}` : g.sub}</p>
+        <img class="peek" src="${IMG}${g.peek}.png" alt="">
+      </button>`);
+      t.onclick = () => show(game(key));
+      tiles.append(t);
+    }
+    el.querySelector('#dexbtn').onclick = dex;
+    el.querySelector('#ouders').onclick = () => show(parents());
+    el.querySelector('#mute').onclick = () => { S.mute = !S.mute; save(); show(home()); if (!S.mute) say('Hoi Thiago!'); };
+    return el;
+  }
+
+  function game(key) {
+    const g = GAMES[key];
+    let stars = 0, streak = 0, misses = 0;
+    const el = $(`<section class="screen">
+      <div class="bar">
+        <button class="round" id="back" aria-label="terug">🏠</button>
+        <div class="stars">${Array.from({ length: 5 }, () => ballHTML()).join('')}</div>
+        <button class="lvlbtn" id="lvl"></button>
+      </div>
+      <h2 class="question"><span id="q"></span><button class="round say" id="again" aria-label="nog eens horen">🔊</button></h2>
+      <div class="stage" id="stage"></div>
+      <div class="answers" id="answers"></div>
+    </section>`);
+    const stage = el.querySelector('#stage'), answers = el.querySelector('#answers');
+    const lvlBtn = el.querySelector('#lvl');
+    const paintLvl = () => { lvlBtn.innerHTML = `${dotsHTML(S.lvl[key], g.maxLvl)} ${g.levelText[S.lvl[key] - 1]}`; };
+    lvlBtn.onclick = () => { S.lvl[key] = S.lvl[key] % g.maxLvl + 1; save(); paintLvl(); next(); };
+    el.querySelector('#back').onclick = () => show(home());
+    let cur;
+    el.querySelector('#again').onclick = () => cur && say(...cur.spoken);
+
+    function next() {
+      misses = 0;
+      cur = g.make(S.lvl[key]);
+      el.querySelector('#q').innerHTML = cur.q;
+      cur.render(stage);
+      answers.innerHTML = '';
+      for (const c of cur.choices) {
+        const label = cur.labels ? cur.labels[c] : c;
+        const b = $(`<button class="ans ${cur.kind || ''}">${label}</button>`);
+        b.onclick = () => choose(b, c);
+        answers.append(b);
+      }
+      setTimeout(() => say(...cur.spoken), 250);
+    }
+    function choose(btn, c) {
+      if (c === cur.answer) {
+        btn.classList.add('right');
+        answers.querySelectorAll('button').forEach(b => b.disabled = true);
+        if (cur.reveal) cur.reveal(stage);
+        logAnswer(key, true, misses === 0, cur.item, c);
+        if (misses === 0) streak++; else streak = 0;
+        // adaptive level: 4 first-try answers in a row moves up
+        if (streak >= 4 && S.lvl[key] < g.maxLvl) { S.lvl[key]++; streak = 0; save(); paintLvl(); }
+        stars++;
+        el.querySelectorAll('.stars .ball')[stars - 1].classList.add('on');
+        say(pick(PRAISE), ...cur.after);
+        setTimeout(() => stars >= 5 ? show(catchScreen(key)) : next(), 2200);
+      } else {
+        btn.classList.add('wrong');
+        logAnswer(key, false, false, cur.item, cur.labels ? cur.labels[c] : c);
+        misses++; streak = 0;
+        if (misses >= 2 && S.lvl[key] > 1) { S.lvl[key]--; save(); paintLvl(); }
+        say('Bijna! Probeer het nog eens.');
+        if (cur.onWrong) cur.onWrong(stage);
+      }
+    }
+    paintLvl();
+    setTimeout(next, 0);
+    return el;
+  }
+
+  function catchScreen(key) {
+    const left = POKE.filter(p => !S.caught.includes(p[0]));
+    const [id, name] = left.length ? pick(left) : pick(POKE);
+    const isNew = !S.caught.includes(id);
+    if (isNew) { S.caught.push(id); save(); }
+    logCatch(key);
+    const el = $(`<section class="screen catch">
+      <h2>Er zit iets in de Pokébal…</h2>
+      <span class="ball big wobble"></span>
+      <div class="row"></div>
+    </section>`);
+    say('Er zit iets in de Pokébal!');
+    setTimeout(() => {
+      el.querySelector('.big').replaceWith($(`<img class="new" src="${IMG}${id}.png" alt="${name}">`));
+      el.querySelector('h2').textContent = isNew ? `Je hebt ${name} gevangen!` : `${name} kwam weer langs!`;
+      say(isNew ? `Hoera! Je hebt ${name} gevangen!` : `${name} kwam weer langs!`);
+      const row = el.querySelector('.row');
+      const again = $(`<button class="go">Nog een keer</button>`); again.onclick = () => show(game(key));
+      const dexb = $(`<button class="go alt">Mijn Pokédex</button>`); dexb.onclick = dex;
+      const homeb = $(`<button class="go alt">🏠</button>`); homeb.onclick = () => show(home());
+      row.append(again, dexb, homeb);
+    }, 1900);
+    return el;
+  }
+
+  function dex() {
+    const el = $(`<section class="screen">
+      <div class="bar">
+        <button class="round" id="back" aria-label="terug">🏠</button>
+        <h2 class="question" style="flex:1;justify-content:flex-start">Mijn Pokédex: ${S.caught.length} van de ${POKE.length}</h2>
+      </div>
+      <div class="dex"></div>
+    </section>`);
+    el.querySelector('#back').onclick = () => show(home());
+    const grid = el.querySelector('.dex');
+    for (const [id, name] of POKE) {
+      const has = S.caught.includes(id);
+      const c = $(`<div class="${has ? '' : 'no'}"><button aria-label="${has ? name : 'nog niet gevangen'}"><img src="${IMG}${id}.png" alt="" loading="lazy"><span>${name}</span></button></div>`);
+      c.querySelector('button').onclick = () => say(has ? name : 'Die heb je nog niet gevangen.');
+      grid.append(c);
+    }
+    show(el);
+  }
+
+  function settingsPanel(onWiped) {
+    const panel = $(`<div class="report voice">
+      <div class="settings">
+        <label>Stem
+          <select id="voicesel"></select>
+        </label>
+        <button class="chip" id="voicetest">🔊 Test</button>
+        <label>Letter van de week
+          <select id="focussel"><option value="">geen</option>${'abcdefghijklmnoprstuvwz'.split('').map(l => `<option value="${l}">${l}</option>`).join('')}</select>
+        </label>
+      </div>
+      <div class="settings" id="wipe">
+        <button class="chip" id="wipetoday">Wis vandaag</button>
+        <button class="chip" id="wipeall">Wis alles</button>
+        <span class="parent" id="wipenote">Wist de geteste antwoorden, de Pokédex en de niveaus.</span>
+      </div>
+    </div>`);
+    const sel = panel.querySelector('#voicesel');
+    const fill = () => {
+      const list = dutchVoices();
+      sel.innerHTML = `<option value="">Automatisch: beste Nederlandse stem${voice ? ` (${voice.name})` : ''}</option>`
+        + list.map(v => `<option value="${v.name.replace(/"/g, '&quot;')}">${v.name}</option>`).join('')
+        + `<option value="builtin">Computerstem (als er geen andere is)</option>`;
+      sel.value = S.voiceName || '';
+    };
+    sel.onchange = () => { S.voiceName = sel.value; save(); if (S.voiceName === 'builtin') loadClips(); pickVoice(); say('Hoi Thiago!', 'Hoeveel Pikachu zie je?'); };
+    panel.querySelector('#voicetest').onclick = () => { if (S.mute) { S.mute = false; save(); } say('Hoi Thiago!', 'Hoeveel Pikachu zie je?'); };
+    fill(); setTimeout(fill, 800);
+    const fsel = panel.querySelector('#focussel');
+    fsel.value = S.focus || '';
+    fsel.onchange = () => { S.focus = fsel.value; save(); };
+
+    // wiping asks for a second tap on the same button
+    const note = panel.querySelector('#wipenote');
+    const arm = (btn, label, run) => {
+      btn.onclick = async () => {
+        if (!btn.dataset.armed) { btn.dataset.armed = '1'; btn.textContent = 'Zeker? Tik nog een keer'; btn.classList.add('danger'); return; }
+        btn.disabled = true; note.textContent = 'Bezig met wissen…';
+        try { await run(); note.textContent = 'Gewist.'; } catch (e) { note.textContent = 'Wissen lukte niet helemaal. Probeer het nog eens.'; }
+        btn.disabled = false; delete btn.dataset.armed; btn.textContent = label; btn.classList.remove('danger');
+        onWiped();
+      };
+    };
+    const deleteDays = async (onlyToday) => {
+      if (!db) return;
+      const q = await db.collection('days').get();
+      for (const d of q.docs) {
+        if (onlyToday && !d.id.startsWith(today())) continue;
+        await db.collection('days').doc(d.id).delete();
+        delete dayCache[d.id];
+      }
+    };
+    arm(panel.querySelector('#wipetoday'), 'Wis vandaag', () => deleteDays(true));
+    arm(panel.querySelector('#wipeall'), 'Wis alles', async () => {
+      await deleteDays(false);
+      const keep = { voiceName: S.voiceName, focus: S.focus, mute: S.mute };
+      S = Object.assign(fresh(), keep);
+      save();
+    });
+    return panel;
+  }
+
+  function parents() {
+    const el = $(`<section class="screen">
+      <div class="bar">
+        <button class="round" id="back" aria-label="terug">🏠</button>
+        <h2 class="question" style="flex:1;justify-content:flex-start">Voortgang van Thiago</h2>
+      </div>
+      <div class="report" id="report"><p class="parent">Laden…</p></div>
+    </section>`);
+    el.querySelector('#back').onclick = () => show(home());
+    const box = el.querySelector('#report');
+    el.querySelector('.bar').after(settingsPanel(() => show(parents())));
+    const lvlLine = Object.entries(GAMES).map(([k, g]) => `<div class="kpi"><span>${g.title}</span><b>niveau ${S.lvl[k]}</b><small>${g.levelText[S.lvl[k] - 1]}</small></div>`).join('');
+    const head = `<div class="kpis">${lvlLine}<div class="kpi"><span>Pokédex</span><b>${S.caught.length} / ${POKE.length}</b><small>gevangen</small></div></div>`;
+    if (!db) {
+      box.innerHTML = head + `<p class="parent">De dagoverzichten worden alleen bewaard als deze pagina geopend is via de Claude-link terwijl je bent ingelogd. Op dit apparaat zie je nu alleen het huidige niveau.</p>`;
+      return el;
+    }
+    db.collection('days').orderBy('date', 'desc').limit(120).get().then(q => {
+      const rows = q.docs.map(d => d.data());
+      if (!rows.length) { box.innerHTML = head + `<p class="parent">Nog geen oefeningen gedaan. Na de eerste antwoorden verschijnt hier per dag wat Thiago heeft gedaan.</p>`; return; }
+      const byDate = {};
+      rows.forEach(r => (byDate[r.date] = byDate[r.date] || []).push(r));
+      const fmt = ds => new Date(ds + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+      let html = head + `<div class="tablewrap"><table><thead><tr><th>Dag</th><th>Spel</th><th>Hoe ging het</th><th>Vragen</th><th>In 1x goed</th><th>Fout</th><th>Niveau</th><th>Gevangen</th></tr></thead><tbody>`;
+      for (const [date, list] of Object.entries(byDate)) {
+        list.forEach((r, i) => {
+          // the learning notes ask for makkelijk / nog lastig instead of scores
+          const share = r.answered ? r.firstTry / r.answered : 0;
+          const feel = r.answered < 3 ? ['even geprobeerd', 'tag-try'] : share >= .75 ? ['makkelijk', 'tag-easy'] : ['nog lastig', 'tag-hard'];
+          html += `<tr>${i === 0 ? `<td rowspan="${list.length}">${fmt(date)}</td>` : ''}<td>${(GAMES[r.game] || { title: r.game }).title}</td><td><span class="tag ${feel[1]}">${feel[0]}</span></td><td>${r.answered}</td><td>${r.firstTry} <small>(${Math.round(100 * share)}%)</small></td><td>${r.wrong}</td><td>${r.level ? (GAMES[r.game] ? GAMES[r.game].levelText[r.level - 1] : r.level) : ''}</td><td>${r.catches || 0}</td></tr>`;
+        });
+      }
+      html += `</tbody></table></div>`;
+      const recent = rows.flatMap(r => (r.misses || []).map(m => ({ m, g: r.game, date: r.date }))).slice(0, 40);
+      if (recent.length) html += `<h3>Nog lastig</h3><ul class="misses">${recent.slice(0, 24).map(x => `<li><span>${fmt(x.date)}</span> ${x.m}</li>`).join('')}</ul><p class="parent">Achter de pijl staat wat hij eerst koos. Handig om samen nog eens te oefenen, voordoen en dan samen.</p>`;
+      box.innerHTML = html;
+    }).catch(() => { box.innerHTML = head + `<p class="parent">Het overzicht kon niet geladen worden. Probeer het straks opnieuw.</p>`; });
+    return el;
+  }
+
+  function show(el) { app.innerHTML = ''; app.append(el); window.scrollTo(0, 0); }
+  show(home());
+
+  (async () => {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const d = await window.claude.use('db');
+      if (!d) return;
+      const snap = await d.doc('progress/state').get();
+      if (snap.exists) {
+        const r = snap.data();
+        S.caught = [...new Set([...(r.caught || []), ...S.caught])];
+        S.lvl = Object.assign({}, S.lvl, r.lvl || {});
+      }
+      db = d;
+      save();
+      if (app.querySelector('.hello')) show(home());
+    } catch (e) {}
+  })();
+})();
+</script>
+
+</body>
+</html>
