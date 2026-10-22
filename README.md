@@ -20,5 +20,6 @@ Instellingen → Toegankelijkheid → Gesproken materiaal → Stemmen → Nederl
 
 - `index.html`: de site (gebouwd uit `app.html` met `python3 tools/build_pages.py`).
 - `app.html`: dezelfde pagina zonder `<head>`, voor de Claude-versie.
+- `schaak/`: Thiago's Schaakavontuur, te openen via https://jonneguyt.github.io/thiago/schaak/
 - `img/`: Pokémon-plaatjes (officiële artwork via PokeAPI, alleen voor privégebruik).
 - `voice.json`: optionele computerstem (Piper, stem nl rdh, CC0), gemaakt met `tools/make_voice.py`.

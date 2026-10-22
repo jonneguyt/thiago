@@ -520,7 +520,10 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       </header>
       <div class="mission">${missionHTML()}</div>
       <div class="tiles"></div>
-      <button class="chip" id="ouders" style="align-self:flex-start;font-size:16px">📈 Voortgang voor ouders</button>
+      <div class="row" style="justify-content:flex-start">
+        <a class="chip" id="schaak" href="schaak/" style="text-decoration:none;color:inherit;font-size:18px" hidden>♟️ Schaken</a>
+        <button class="chip" id="ouders" style="font-size:16px">📈 Voortgang voor ouders</button>
+      </div>
       <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 5 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag en is in te stellen bij Voortgang voor ouders. Een vraag komt pas terug na een stuk of acht andere. Dagmissie: in alle vier de spellen een Pokémon vangen geeft een bonus-Pokémon.</p>
     </section>`);
     const tiles = el.querySelector('.tiles');
@@ -535,6 +538,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       tiles.append(t);
     }
     el.querySelector('#dexbtn').onclick = dex;
+    // the chess page lives next to this one on the GitHub site only
+    try { if (window.self === window.top && location.protocol.startsWith('http')) el.querySelector('#schaak').hidden = false; } catch (e) {}
     el.querySelector('#ouders').onclick = () => show(pinScreen());
     el.querySelector('#mute').onclick = () => { S.mute = !S.mute; save(); show(home()); if (!S.mute) say('Hoi Thiago!'); };
     return el;

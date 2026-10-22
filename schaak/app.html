@@ -1,0 +1,1144 @@
+<title>Thiago's Schaakavontuur</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Fredoka:wght@500;600;700&family=Noto+Sans+Symbols+2&display=swap">
+<style>
+/* Layout: one screen at a time (home, uitleg, oefenbord, raadspel, stickers, ouders). A wooden-framed tournament board
+   (green and cream) is the hero of every screen; big touch targets for a 5-year-old on an iPad. Single bright look on purpose. */
+:root {
+  --bg: #e6f2ea;
+  --bg-deep: #cfe6d7;
+  --paper: #ffffff;
+  --ink: #23302a;
+  --ink-soft: #5c6e64;
+  --light-sq: #efeed3;
+  --dark-sq: #7a9c59;
+  --wood: #b9773c;
+  --wood-deep: #8a5326;
+  --sun: #ffc93c;
+  --sun-deep: #d39b0b;
+  --tomato: #e8573f;
+  --dot: rgba(35, 90, 40, .45);
+  --shadow: rgba(35, 48, 42, .18);
+  --ui: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --read: "Andika", "Comic Sans MS", system-ui, sans-serif;
+  --chess: "Noto Sans Symbols 2", "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui);
+  -webkit-user-select: none; user-select: none; touch-action: manipulation; overflow-x: hidden;
+}
+.screen {
+  min-height: 100%; max-width: 1000px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
+button:focus-visible { outline: 4px solid var(--tomato); outline-offset: 3px; }
+h1, h2, h3 { text-wrap: balance; }
+
+/* pieces: chess glyphs, white ones get a dark outline so they read like real Staunton pieces */
+.pc { font-family: var(--chess); line-height: 1; display: inline-block; }
+.pc.w { color: #fffdf6; text-shadow: 0 2px 0 var(--ink), 0 -2px 0 var(--ink), 2px 0 0 var(--ink), -2px 0 0 var(--ink),
+  1.5px 1.5px 0 var(--ink), -1.5px 1.5px 0 var(--ink), 1.5px -1.5px 0 var(--ink), -1.5px -1.5px 0 var(--ink), 0 5px 0 rgba(0,0,0,.18); }
+.pc.b { color: #2b2b33; text-shadow: 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff, 0 5px 0 rgba(0,0,0,.18); }
+
+/* top bar */
+.bar { display: flex; align-items: center; gap: 10px; }
+.round { width: 60px; height: 60px; border-radius: 50%; background: var(--paper); font-size: 28px; display: grid; place-items: center; box-shadow: 0 4px 0 var(--shadow); flex: none; }
+.round:active, .chip:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+.chip { background: var(--paper); border-radius: 999px; padding: 10px 18px; font-weight: 600; font-size: 19px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 0 var(--shadow); }
+.spacer { flex: 1; }
+.steps { display: flex; gap: 8px; justify-content: center; flex: 1; }
+.steps i { width: 18px; height: 18px; border-radius: 50%; background: var(--bg-deep); display: block; }
+.steps i.on { background: var(--sun); box-shadow: inset 0 0 0 3px var(--sun-deep); }
+.steps i.now { background: var(--paper); box-shadow: inset 0 0 0 3px var(--dark-sq); }
+
+/* home */
+.hello { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.hello .pc { font-size: 72px; }
+.hello h1 { margin: 0; font-size: clamp(34px, 6vw, 58px); line-height: 1; font-weight: 700; letter-spacing: -.5px; }
+.hello h1 span { color: var(--dark-sq); }
+.pieces { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 640px) { .pieces { grid-template-columns: repeat(2, 1fr); } }
+.ptile { background: var(--paper); border-radius: 26px; padding: 14px 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 2px; box-shadow: 0 7px 0 var(--shadow); position: relative; }
+.ptile:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--shadow); }
+.ptile .pc { font-size: clamp(64px, 11vw, 96px); }
+.ptile b { font-size: clamp(24px, 3.6vw, 32px); line-height: 1.1; font-weight: 600; }
+.ptile .steps { flex: none; gap: 6px; margin-top: 4px; }
+.ptile .steps i { width: 13px; height: 13px; }
+.ptile .medal { position: absolute; top: 8px; right: 10px; font-size: 32px; }
+.ptile .nr { position: absolute; top: 10px; left: 14px; font-size: 18px; color: var(--ink-soft); font-weight: 600; }
+.extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.xtile { background: var(--sun); border-radius: 26px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; box-shadow: 0 7px 0 var(--sun-deep); text-align: left; min-height: 104px; }
+.xtile:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--sun-deep); }
+.xtile .big { font-size: 54px; line-height: 1; }
+.xtile b { font-size: 28px; display: block; line-height: 1.05; }
+.xtile small { font-size: 17px; color: #5b4300; }
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.note { color: var(--ink-soft); font-size: 15px; line-height: 1.35; max-width: 65ch; }
+
+/* board */
+.boardwrap { display: flex; justify-content: center; }
+.frame { background: var(--wood); padding: 12px; border-radius: 22px; box-shadow: inset 0 -6px 0 var(--wood-deep), 0 10px 0 var(--shadow); width: min(100%, var(--bs)); }
+.board { --n: 5; position: relative; width: 100%; aspect-ratio: 1; max-width: 100%; display: grid; grid-template-columns: repeat(var(--n), 1fr); border-radius: 10px; overflow: hidden; }
+.sq { background: var(--light-sq); position: relative; display: grid; place-items: center; }
+.sq.d { background: var(--dark-sq); }
+.sq .dot { width: 30%; aspect-ratio: 1; height: auto; border-radius: 50%; background: var(--dot); }
+.sq .ring { position: absolute; inset: 6%; border-radius: 50%; border: 6px solid var(--dot); }
+.sq.flash { animation: flash .5s; }
+.sq.sel { box-shadow: inset 0 0 0 5px var(--sun); }
+.sq.last::before { content: ""; position: absolute; inset: 0; background: rgba(255, 201, 60, .35); }
+.sq.check { background: radial-gradient(circle, #f26b52 0 35%, transparent 75%), var(--light-sq); }
+.sq.d.check { background: radial-gradient(circle, #f26b52 0 35%, transparent 75%), var(--dark-sq); }
+.sec { margin: 6px 0 -4px; font-size: clamp(24px, 3.4vw, 30px); display: flex; align-items: baseline; gap: 10px; }
+.sec small { font-size: 17px; color: var(--ink-soft); font-weight: 500; }
+.ptile small { font-size: 16px; color: var(--ink-soft); line-height: 1.15; text-align: center; }
+.ptile .wins { font-size: 18px; min-height: 22px; }
+.pin { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pin .shown { display: flex; gap: 14px; }
+.pin .shown i { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--ink-soft); display: block; }
+.pin .shown i.on { background: var(--ink); border-color: var(--ink); }
+.pin .keys { display: grid; grid-template-columns: repeat(3, 76px); gap: 12px; }
+.pin .keys button { height: 76px; border-radius: 22px; background: var(--paper); box-shadow: 0 5px 0 var(--shadow); font-size: 30px; font-weight: 600; }
+.pin .keys button:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--shadow); }
+@keyframes flash { 50% { background: #f4b6a8; } }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.tok { position: absolute; width: calc(100% / var(--n)); height: calc(100% / var(--n)); display: grid; place-items: center; transition: left .38s ease, top .38s ease, transform .2s; }
+.tok .pc { font-size: calc(var(--bs) / var(--n) * .86); }
+.tok .em { font-size: calc(var(--bs) / var(--n) * .58); line-height: 1; }
+.tok.star .em { animation: twinkle 1.6s ease-in-out infinite; }
+.tok.gone { transform: scale(0); opacity: 0; transition: transform .3s, opacity .3s; }
+.tok.hop .pc { animation: hop .38s; }
+.tok.shake { animation: shake .4s; }
+.tok.crown .pc { animation: grow .6s; }
+@keyframes twinkle { 50% { transform: scale(1.12) rotate(8deg); } }
+@keyframes hop { 50% { transform: translateY(-28%) scale(1.08); } }
+@keyframes shake { 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
+@keyframes grow { 0% { transform: scale(.3); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.coords { display: none; }
+
+.prompt { margin: 0; font-size: clamp(24px, 4vw, 36px); font-weight: 600; text-align: center; line-height: 1.15; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; }
+.prompt .round { width: 52px; height: 52px; font-size: 22px; }
+
+/* intro */
+.intro { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.intro .hero .pc { font-size: clamp(96px, 16vw, 150px); }
+.intro h2 { margin: 0; font-size: clamp(38px, 6vw, 56px); line-height: 1; }
+.intro p { margin: 0; font-family: var(--read); font-size: clamp(20px, 2.8vw, 26px); line-height: 1.3; max-width: 30ch; }
+.go { background: var(--sun); box-shadow: 0 8px 0 var(--sun-deep); border-radius: 28px; padding: 14px 34px; font-size: 32px; font-weight: 700; }
+.go:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--sun-deep); }
+
+/* reward overlay */
+.over { position: fixed; inset: 0; background: rgba(35, 48, 42, .55); display: grid; place-items: center; z-index: 20;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.card { background: var(--paper); border-radius: 34px; padding: 26px 24px; max-width: 520px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; text-align: center; box-shadow: 0 12px 0 var(--shadow); }
+.card h2 { margin: 0; font-size: clamp(30px, 5vw, 42px); line-height: 1.05; }
+.sticker { font-size: 130px; line-height: 1; animation: spinin .8s cubic-bezier(.3,1.6,.5,1); filter: drop-shadow(0 6px 0 rgba(0,0,0,.12)); }
+.sticker .pc { font-size: 130px; }
+@keyframes spinin { from { transform: scale(0) rotate(-200deg); } to { transform: scale(1) rotate(0); } }
+.row { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.confetti { position: fixed; inset: 0; pointer-events: none; z-index: 30; overflow: hidden; }
+.confetti i { position: absolute; top: -20px; width: 12px; height: 18px; border-radius: 3px; animation: fall 1.8s linear forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+/* quiz */
+.qopts { display: flex; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.qopt { background: var(--paper); border-radius: 30px; width: clamp(130px, 26vw, 220px); aspect-ratio: 1; max-width: 100%; display: grid; place-items: center; box-shadow: 0 8px 0 var(--shadow); }
+.qopt .pc { font-size: clamp(90px, 17vw, 150px); }
+.qopt:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--shadow); }
+.qopt.right { background: #c9ecc1; animation: grow .5s; }
+.qopt.wrong { opacity: .4; animation: shake .4s; }
+
+/* sticker book */
+.book { background: var(--paper); border-radius: 28px; padding: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 12px; box-shadow: 0 7px 0 var(--shadow); }
+.book div { aspect-ratio: 1; max-width: 100%; border-radius: 20px; background: var(--bg); display: grid; place-items: center; font-size: 52px; }
+.book div.empty { background: repeating-linear-gradient(45deg, var(--bg) 0 8px, var(--paper) 8px 16px); }
+.book div .pc { font-size: 56px; }
+.medals { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.medals div { background: var(--paper); border-radius: 22px; padding: 10px 14px; display: flex; align-items: center; gap: 6px; box-shadow: 0 5px 0 var(--shadow); font-size: 20px; font-weight: 600; }
+.medals div .pc { font-size: 44px; }
+.medals div.off { opacity: .35; }
+
+/* parent */
+.report { background: var(--paper); border-radius: 22px; padding: 16px 18px; box-shadow: 0 5px 0 var(--shadow); font-family: var(--read); }
+.report h2, .report h3 { font-family: var(--ui); margin: 0 0 8px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 17px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--bg-deep); white-space: nowrap; }
+th { font-family: var(--ui); font-weight: 600; color: var(--ink-soft); }
+.tag { display: inline-block; border-radius: 999px; padding: 2px 12px; font-family: var(--ui); font-weight: 600; font-size: 15px; }
+.tag.ok { background: #d5efcd; color: #2f6b22; }
+.tag.hard { background: #fde2c4; color: #8a4a06; }
+.tag.new { background: var(--bg); color: var(--ink-soft); }
+.misses { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 17px; }
+.misses span { color: var(--ink-soft); font-size: 14px; }
+.danger { background: #fde2dc; color: #8f2512; }
+.confirm { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+</style>
+
+<div id="app"></div>
+
+<script>
+(() => {
+  const $ = html => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  const app = document.getElementById('app');
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+  // ---------- pieces and lessons ----------
+  // Board squares are [row, col], row 0 at the top; white moves up. Text strings are also the keys in voice.json.
+  const GLYPH = { toren: '♜', loper: '♝', dame: '♛', koning: '♚', paard: '♞', pion: '♟' };
+  const pc = (type, color = 'w') => `<span class="pc ${color}">${GLYPH[type]}︎</span>`;
+  const PIECES = [
+    { id: 'toren', name: 'de toren', title: 'De toren',
+      intro: ['Dit is de toren.', 'De toren rijdt rechtdoor: vooruit, achteruit en opzij.', 'Hij mag zo ver als hij wil.'],
+      text: 'Rechtdoor: vooruit, achteruit en opzij. Zo ver als hij wil.',
+      demo: { at: [2, 2], path: [[0, 2], [0, 4], [4, 4], [4, 0], [2, 0], [2, 2]] },
+      levels: [
+        { n: 5, at: [4, 2], stars: [[0, 2]], hints: true, say: 'Pak de ster!' },
+        { n: 5, at: [4, 0], stars: [[4, 4], [0, 4], [0, 0]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [2, 2], stars: [[2, 0], [0, 0], [0, 4], [4, 4]], say: 'Nu zonder stipjes. Jij weet het al!' },
+        { n: 5, at: [4, 0], own: [[2, 0], [1, 2]], stars: [[0, 0], [0, 4]], say: 'Je eigen pion staat in de weg. Ga eromheen!' },
+        { n: 8, at: [7, 0], own: [[4, 0], [7, 6]], foes: [[7, 4], [2, 4], [2, 1]], say: 'Pak alle zwarte pionnen!' },
+      ] },
+    { id: 'loper', name: 'de loper', title: 'De loper',
+      intro: ['Dit is de loper.', 'De loper loopt schuin, net als een glijbaan.', 'Ook hij mag zo ver als hij wil.'],
+      text: 'Schuin, net als een glijbaan. Zo ver als hij wil.',
+      demo: { at: [2, 2], path: [[0, 0], [4, 4], [2, 2], [0, 4], [4, 0], [2, 2]] },
+      levels: [
+        { n: 5, at: [4, 0], stars: [[0, 4]], hints: true, say: 'Pak de ster!' },
+        { n: 5, at: [4, 2], stars: [[2, 0], [0, 2], [2, 4]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [4, 4], stars: [[0, 0], [1, 3], [3, 1]], say: 'Nu zonder stipjes. Jij weet het al!' },
+        { n: 5, at: [4, 2], own: [[3, 1]], stars: [[2, 0], [0, 4]], say: 'Je eigen pion staat in de weg. Ga eromheen!' },
+        { n: 8, at: [7, 2], own: [[6, 3]], foes: [[4, 5], [2, 3], [5, 0]], say: 'Pak alle zwarte pionnen!' },
+      ] },
+    { id: 'dame', name: 'de dame', title: 'De dame',
+      intro: ['Dit is de dame.', 'De dame is de sterkste van allemaal!', 'Ze mag rechtdoor en schuin, zo ver als ze wil.'],
+      text: 'De sterkste! Rechtdoor én schuin, zo ver als ze wil.',
+      demo: { at: [2, 2], path: [[0, 2], [2, 4], [4, 4], [4, 2], [2, 0], [0, 0], [2, 2]] },
+      levels: [
+        { n: 5, at: [4, 2], stars: [[0, 2], [2, 4]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [2, 2], stars: [[0, 0], [0, 4], [4, 4], [4, 0]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [4, 0], stars: [[0, 4], [0, 1], [3, 4]], say: 'Nu zonder stipjes. Jij weet het al!' },
+        { n: 5, at: [4, 4], own: [[3, 3], [2, 4], [4, 2]], stars: [[0, 0], [0, 4]], say: 'Je eigen pion staat in de weg. Ga eromheen!' },
+        { n: 8, at: [7, 4], own: [[6, 4]], foes: [[1, 1], [1, 6], [5, 6], [6, 2]], say: 'Pak alle zwarte pionnen!' },
+      ] },
+    { id: 'koning', name: 'de koning', title: 'De koning',
+      intro: ['Dit is de koning.', 'De koning is heel belangrijk, maar een beetje langzaam.', 'Hij zet één stapje, naar alle kanten.'],
+      text: 'Heel belangrijk, maar langzaam. Eén stapje, naar alle kanten.',
+      demo: { at: [2, 2], path: [[1, 2], [1, 3], [2, 3], [3, 2], [3, 1], [2, 1], [2, 2]] },
+      levels: [
+        { n: 5, at: [4, 2], stars: [[3, 2]], hints: true, say: 'Pak de ster!' },
+        { n: 5, at: [2, 2], stars: [[1, 1], [1, 3], [3, 3]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [4, 0], stars: [[2, 0], [2, 2], [4, 2]], say: 'Nu zonder stipjes. Jij weet het al!' },
+        { n: 5, at: [4, 2], own: [[3, 1], [3, 2], [3, 3]], stars: [[1, 2]], say: 'Je eigen pion staat in de weg. Ga eromheen!' },
+        { n: 5, at: [4, 2], foes: [[2, 2], [0, 0], [1, 4]], say: 'Pak alle zwarte pionnen!' },
+      ] },
+    { id: 'paard', name: 'het paard', title: 'Het paard',
+      intro: ['Dit is het paard.', 'Het paard springt! Twee stapjes rechtdoor en dan één opzij.', 'Zo maakt hij een L. Hij mag over andere stukken heen springen.'],
+      text: 'Hij springt: twee stapjes rechtdoor, één opzij. Een L! Over andere stukken heen.',
+      demo: { at: [2, 2], path: [[0, 1], [2, 2], [1, 4], [2, 2], [4, 3], [2, 2], [3, 0], [2, 2]] },
+      levels: [
+        { n: 5, at: [4, 1], stars: [[2, 2]], hints: true, say: 'Pak de ster!' },
+        { n: 5, at: [4, 2], stars: [[2, 1], [0, 2]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [2, 2], stars: [[0, 1], [0, 3], [4, 1], [4, 3]], hints: true, say: 'Pak alle sterren!' },
+        { n: 5, at: [4, 1], own: [[3, 0], [3, 1], [3, 2], [4, 0], [4, 2]], stars: [[2, 2], [0, 1]], say: 'Het paard springt er gewoon overheen!' },
+        { n: 8, at: [7, 1], foes: [[5, 2], [3, 3], [1, 4]], say: 'Nu zonder stipjes. Pak alle zwarte pionnen!' },
+      ] },
+    { id: 'pion', name: 'de pion', title: 'De pion',
+      intro: ['Dit is de pion.', 'De pion loopt één stapje vooruit. Nooit achteruit!', 'Slaan doet hij schuin naar voren.'],
+      text: 'Eén stapje vooruit, nooit achteruit. Slaan doet hij schuin.',
+      demo: { at: [3, 2], foes: [[1, 3]], path: [[2, 2], [1, 3], [0, 3]] },
+      levels: [
+        { n: 5, at: [2, 2], stars: [[1, 2]], hints: true, say: 'De pion loopt één stapje vooruit.' },
+        { n: 5, at: [3, 1], stars: [[1, 1]], hints: true, say: 'Bij zijn allereerste stapje mag de pion twee vakjes vooruit.' },
+        { n: 5, at: [3, 2], extra: [[2, 2]], foes: [[2, 3]], hints: true, say: 'Pak de zwarte pion! De pion slaat schuin.' },
+        { n: 5, at: [3, 2], extra: [[2, 2]], foes: [[2, 1]], stars: [[0, 1]], say: 'Breng de pion naar de overkant!' },
+        { n: 5, at: [3, 0], extra: [[2, 0]], foes: [[2, 1], [1, 2]], goal: 'promote', say: 'Breng de pion naar de overkant!' },
+      ] },
+  ];
+  const BY = Object.fromEntries(PIECES.map(p => [p.id, p]));
+  const NOT_LIKE = { toren: 'Oeps! Zo loopt de toren niet.', loper: 'Oeps! Zo loopt de loper niet.', dame: 'Oeps! Zo loopt de dame niet.',
+    koning: 'Oeps! Zo loopt de koning niet.', paard: 'Oeps! Zo springt het paard niet.', pion: 'Oeps! Zo loopt de pion niet.' };
+  const KNOWS = { toren: 'Wauw! Je kent de toren nu helemaal!', loper: 'Wauw! Je kent de loper nu helemaal!', dame: 'Wauw! Je kent de dame nu helemaal!',
+    koning: 'Wauw! Je kent de koning nu helemaal!', paard: 'Wauw! Je kent het paard nu helemaal!', pion: 'Wauw! Je kent de pion nu helemaal!' };
+  const WHERE = { toren: 'Waar is de toren?', loper: 'Waar is de loper?', dame: 'Waar is de dame?', koning: 'Waar is de koning?', paard: 'Waar is het paard?', pion: 'Waar is de pion?' };
+  const THATIS = { toren: 'Dat is de toren.', loper: 'Dat is de loper.', dame: 'Dat is de dame.', koning: 'Dat is de koning.', paard: 'Dat is het paard.', pion: 'Dat is de pion.' };
+  const PRAISE = ['Goed zo!', 'Super!', 'Knap hoor!', 'Ja, goed!', 'Top!'];
+  const STICKERS = ['🦁','🐸','🦄','🚀','🦖','🐙','🌈','⚽','🎈','🐢','🦊','🐼','🍦','🚂','🦋','🐳','🍓','🐝','🦒','🚒','🐧','🍕','🦕','🛸','🐬','🌻','🦜','🐯','🚜','🏰'];
+
+  // ---------- storage ----------
+  const KEY = 'thiago-schaak-v1';
+  const fresh = () => ({ done: {}, stickers: [], play: {}, mute: false, voiceMode: '', voiceName: '', aiLevel: 'makkelijk' });
+  let S = fresh();
+  try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch (e) {}
+  // Progress also goes to the artifact's own store (when signed in on claude.ai), so a parent can check it from any device.
+  let db = null, saveTimer = null;
+  const save = () => {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+    if (!db) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => db.doc('progress/state').set({ done: S.done, stickers: S.stickers, play: S.play || {}, updated: Date.now() }).catch(() => {}), 400);
+  };
+  const doneOf = id => S.done[id] || [];
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  // one log per day: finished levels with their mistakes, plus each wrong move (kept locally, mirrored to the store)
+  const LOGKEY = 'thiago-schaak-log-v1';
+  let LOG = {};
+  try { LOG = JSON.parse(localStorage.getItem(LOGKEY) || '{}') || {}; } catch (e) {}
+  let logChain = Promise.resolve();
+  const dayLog = () => (LOG[today()] = LOG[today()] || { date: today(), levels: [], misses: [] });
+  const writeLog = () => {
+    try { localStorage.setItem(LOGKEY, JSON.stringify(LOG)); } catch (e) {}
+    if (!db) return;
+    const d = JSON.parse(JSON.stringify(dayLog()));
+    logChain = logChain.then(() => db.collection('days').doc(d.date).set(d).catch(() => {}));
+  };
+  const logMiss = m => { const d = dayLog(); d.misses.push(Object.assign({ t: Date.now() }, m)); if (d.misses.length > 200) d.misses.shift(); writeLog(); };
+  const logLevel = l => { dayLog().levels.push(Object.assign({ t: Date.now() }, l)); writeLog(); };
+
+  // ---------- speech ----------
+  // Built-in Dutch recordings (voice.json: phrase -> mp3) played with Web Audio, because iPads ignore the page's voice
+  // inside apps and frames. Falls back to a device Dutch voice only for a phrase that has no recording.
+  let clips = null, actx = null;
+  const decoded = {};
+  let playToken = 0, playing = null;
+  fetch('voice.json').then(r => r.json()).then(j => { clips = j; }).catch(() => {});
+  const unlock = () => {
+    try {
+      if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state !== 'running') actx.resume();
+      const b = actx.createBuffer(1, 1, 22050), src = actx.createBufferSource(); src.buffer = b; src.connect(actx.destination); src.start(0);
+    } catch (e) {}
+  };
+  document.addEventListener('pointerdown', unlock, true);
+  document.addEventListener('touchend', unlock, true);
+  const b64buf = b64 => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer; };
+  const getBuf = key => decoded[key] || (decoded[key] = new Promise((res, rej) => actx.decodeAudioData(b64buf(clips[key]), res, rej)));
+  const stopAll = () => { playToken++; try { playing && playing.stop(); } catch (e) {} playing = null; if (window.speechSynthesis) speechSynthesis.cancel(); };
+  // The iPad's own Dutch voice (Xander or Claire, best as "Enhanced") sounds far better, but only works on a normal web page,
+  // not inside Claude's frame. So: own page -> device voice; inside the frame -> recordings.
+  const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+  const dutchVoices = () => (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter(v => /^nl([-_]|$)/i.test(v.lang || ''));
+  const rank = v => (/enhanced|verbeterd|premium/i.test(v.name) ? 0 : 2) + (/xander|claire/i.test(v.name) ? 0 : 1) + (/nl[-_]NL/i.test(v.lang) ? 0 : 1);
+  const bestVoice = () => { const vs = dutchVoices(); return vs.find(v => v.name === S.voiceName) || vs.sort((a, b) => rank(a) - rank(b))[0] || null; };
+  if (window.speechSynthesis) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => {}; }
+  const deviceSay = (...parts) => new Promise(done => {
+    const nl = bestVoice();
+    if (!nl) return done(); // never let an English voice read Dutch
+    try {
+      const u = new SpeechSynthesisUtterance(parts.join(' ')); u.voice = nl; u.lang = nl.lang.replace('_', '-'); u.rate = .9;
+      u.onend = u.onerror = () => done(); speechSynthesis.speak(u);
+      setTimeout(done, 1500 + parts.join(' ').length * 90);
+    } catch (e) { done(); }
+  });
+  const useDevice = () => S.voiceMode === 'ipad' || (S.voiceMode !== 'opname' && !framed && bestVoice());
+  // say('Goed zo!', 'Pak de ster!') plays each phrase in turn; resolves when done
+  const say = (...parts) => {
+    if (S.mute) return Promise.resolve();
+    stopAll();
+    if (useDevice() || !(clips && actx && parts.every(p => clips[p]))) return deviceSay(...parts);
+    const token = playToken;
+    return (async () => {
+      try {
+        if (actx.state !== 'running') await actx.resume();
+        for (const p of parts) {
+          const buf = await getBuf(p);
+          if (token !== playToken) return;
+          await new Promise(done => { const src = actx.createBufferSource(); src.buffer = buf; src.connect(actx.destination); src.onended = done; playing = src; src.start(0); });
+          if (token !== playToken) return;
+        }
+      } catch (e) {}
+    })();
+  };
+  // small synthesized sound effects
+  const blip = (freqs, dur = .12, type = 'triangle', gain = .18) => {
+    if (S.mute || !actx) return;
+    try {
+      let t = actx.currentTime;
+      for (const f of freqs) {
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.type = type; o.frequency.value = f; g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur); t += dur * .8;
+      }
+    } catch (e) {}
+  };
+  const sfx = { move: () => blip([520], .09, 'sine', .12), star: () => blip([784, 1046], .12), take: () => blip([330, 660], .1, 'square', .08),
+    nope: () => blip([220, 180], .14, 'sine', .14), win: () => blip([523, 659, 784, 1046], .16) };
+
+  // ---------- move rules ----------
+  const DIRS = { toren: [[1,0],[-1,0],[0,1],[0,-1]], loper: [[1,1],[1,-1],[-1,1],[-1,-1]] };
+  DIRS.dame = DIRS.toren.concat(DIRS.loper);
+  const KING = DIRS.dame, KNIGHT = [[-2,-1],[-2,1],[2,-1],[2,1],[-1,-2],[-1,2],[1,-2],[1,2]];
+  // occ(r, c) -> null | 'own' | 'foe'. Returns the squares the piece may go to.
+  function movesFor(type, [r, c], n, occ, startRow) {
+    const out = [], inb = (y, x) => y >= 0 && x >= 0 && y < n && x < n;
+    if (DIRS[type]) {
+      for (const [dy, dx] of DIRS[type]) {
+        let y = r + dy, x = c + dx;
+        while (inb(y, x)) { const o = occ(y, x); if (o === 'own') break; out.push([y, x]); if (o === 'foe') break; y += dy; x += dx; }
+      }
+    } else if (type === 'koning' || type === 'paard') {
+      for (const [dy, dx] of (type === 'koning' ? KING : KNIGHT)) { const y = r + dy, x = c + dx; if (inb(y, x) && occ(y, x) !== 'own') out.push([y, x]); }
+    } else if (type === 'pion') {
+      if (inb(r - 1, c) && !occ(r - 1, c)) { out.push([r - 1, c]); if (r === startRow && inb(r - 2, c) && !occ(r - 2, c)) out.push([r - 2, c]); }
+      for (const dx of [-1, 1]) if (inb(r - 1, c + dx) && occ(r - 1, c + dx) === 'foe') out.push([r - 1, c + dx]);
+    }
+    return out;
+  }
+  // same shape ignoring everything on the board, to tell "wrong way" from "something in the way"
+  const shapeOk = (type, [r, c], [y, x], n, startRow) => movesFor(type, [r, c], n, () => null, startRow).some(([a, b]) => a === y && b === x);
+  const same = (a, b) => a[0] === b[0] && a[1] === b[1];
+  // breadth-first search: can the remaining stars and foes still be collected (or the far side reached)?
+  function solvable(type, at, n, items, goal, startRow) {
+    const seen = new Set(), q = [[type, at, 0]];
+    const need = items.reduce((m, it, i) => (it.kind === 'star' || it.need) ? m | (1 << i) : m, 0);
+    while (q.length) {
+      const [t, a, gone] = q.shift();
+      const key = t + a + ':' + gone; if (seen.has(key)) continue; seen.add(key);
+      if (goal === 'promote' ? t !== type || (t === 'pion' && a[0] === 0) : (need & ~gone) === 0) return true;
+      if (seen.size > 20000) return true;
+      const occ = (r, c) => { const i = items.findIndex((it, j) => !(gone >> j & 1) && it.at[0] === r && it.at[1] === c); return i < 0 || items[i].kind === 'star' ? null : items[i].kind; };
+      for (const m of movesFor(t, a, n, occ, startRow)) {
+        const i = items.findIndex((it, j) => !(gone >> j & 1) && same(it.at, m));
+        const g = i >= 0 && items[i].kind !== 'own' ? gone | (1 << i) : gone;
+        const nt = t === 'pion' && m[0] === 0 ? 'dame' : t;
+        if (goal === 'promote' && nt !== t) return true;
+        q.push([nt, m, g]);
+      }
+    }
+    return false;
+  }
+  const sqName = ([r, c], n) => 'abcdefgh'[c] + (n - r);
+
+  // ---------- board view ----------
+  function boardView(n) {
+    const el = $(`<div class="boardwrap"><div class="frame"><div class="board" style="--n:${n}"></div></div></div>`);
+    const board = el.querySelector('.board');
+    const cells = [];
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      // a1 (bottom left) is dark, as on a real board
+      const sq = $(`<button class="sq${(r + c) % 2 === (n % 2 === 0 ? 1 : 0) ? ' d' : ''}" aria-label="${sqName([r, c], n)}"></button>`);
+      sq.dataset.r = r; sq.dataset.c = c; board.append(sq); cells.push(sq);
+    }
+    const layer = $(`<div class="layer"></div>`); board.append(layer);
+    const cell = (r, c) => cells[r * n + c];
+    const place = (tok, [r, c]) => { tok.style.left = `${c * 100 / n}%`; tok.style.top = `${r * 100 / n}%`; };
+    const add = (html, at, cls = '') => { const t = $(`<div class="tok ${cls}">${html}</div>`); place(t, at); layer.append(t); return t; };
+    const marks = (list, foeAt) => {
+      cells.forEach(s => s.innerHTML = '');
+      for (const [r, c] of list) cell(r, c).innerHTML = foeAt && foeAt(r, c) ? '<span class="ring"></span>' : '<span class="dot"></span>';
+    };
+    return { el, board, cell, place, add, marks, n };
+  }
+  // --bs: board size that fits an iPad in either orientation, with room for the bar and the prompt
+  const sizeBoard = (root, reserve) => root.style.setProperty('--bs', `min(calc(100vw - 32px), calc(100vh - ${reserve}px), 760px)`);
+
+  function show(el) { stopAll(); app.innerHTML = ''; app.append(el); window.scrollTo(0, 0); }
+
+  // ---------- home ----------
+  function home() {
+    const next = PIECES.find(p => doneOf(p.id).length < 5);
+    const el = $(`<div class="screen">
+      <div class="hello">${pc('paard')}<h1>Hoi Thiago!<br><span>Schaken</span></h1><div class="spacer"></div>
+        <button class="chip" id="mute">${S.mute ? '🔇 Geluid uit' : '🔊 Geluid aan'}</button></div>
+      <h2 class="sec">1. Hoe lopen ze? <small>Elk stuk 5 korte oefeningen</small></h2>
+      <div class="pieces" id="learn"></div>
+      <h2 class="sec">2. Spelen <small>Van klein naar een echte partij</small></h2>
+      <div class="pieces" id="play"></div>
+      <div class="extras">
+        <button class="xtile" id="quiz"><span class="big">${pc('dame')}</span><span><b>Raad het stuk</b><small>Waar is de toren?</small></span></button>
+        <button class="xtile" id="book"><span class="big">⭐</span><span><b>Stickerboek</b><small>${S.stickers.length} stickers</small></span></button>
+      </div>
+      <div class="foot"><p class="note">Begin bij de toren en ga zo verder. Kent hij een paar stukken? Probeer dan de Pionnenrace.</p>
+        <button class="chip" id="parent">👪 Ouders</button></div>
+    </div>`);
+    const grid = el.querySelector('#learn');
+    PIECES.forEach((p, i) => {
+      const d = doneOf(p.id);
+      const t = $(`<button class="ptile"><span class="nr">${i + 1}</span>${d.length >= 5 ? '<span class="medal">🏅</span>' : ''}${pc(p.id)}<b>${p.title}</b>
+        <span class="steps">${[1,2,3,4,5].map(k => `<i class="${d.includes(k) ? 'on' : ''}"></i>`).join('')}</span></button>`);
+      if (p === next && d.length === 0 && i > 0) t.style.boxShadow = '0 7px 0 var(--shadow), 0 0 0 4px var(--sun)';
+      t.onclick = () => show(intro(p));
+      grid.append(t);
+    });
+    PLAY.forEach((g, i) => {
+      const w = playDone(g.id);
+      const t = $(`<button class="ptile"><span class="nr">${i + 1}</span>${g.icon}<b>${g.title}</b><small>${g.sub}</small>
+        <span class="wins">${w ? '🏆'.repeat(Math.min(w, 5)) + (w > 5 ? ' ' + w : '') : ''}</span></button>`);
+      t.onclick = () => show(game(g.id));
+      el.querySelector('#play').append(t);
+    });
+    el.querySelector('#mute').onclick = () => { S.mute = !S.mute; save(); show(home()); };
+    el.querySelector('#quiz').onclick = () => show(quiz());
+    el.querySelector('#book').onclick = () => show(book());
+    el.querySelector('#parent').onclick = () => show(pinPad());
+    return el;
+  }
+
+  // parent screen sits behind a code (same code as the Pokémon page)
+  const PIN = '2580';
+  function pinPad() {
+    let typed = '';
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button><h2 style="margin:0;font-size:30px">Code voor ouders</h2></div>
+      <div class="pin"><div class="shown">${'<i></i>'.repeat(4)}</div>
+        <div class="keys">${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k => k === '' ? '<span></span>' : `<button data-k="${k}">${k}</button>`).join('')}</div></div>
+    </div>`);
+    const dots = el.querySelectorAll('.shown i'), shown = el.querySelector('.shown');
+    const paint = () => dots.forEach((d, i) => d.classList.toggle('on', i < typed.length));
+    el.querySelector('.keys').onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      typed = b.dataset.k === '⌫' ? typed.slice(0, -1) : (typed + b.dataset.k).slice(0, 4); paint();
+      if (typed.length === 4) {
+        if (typed === PIN) return show(parent());
+        shown.classList.add('shake'); sfx.nope();
+        setTimeout(() => { shown.classList.remove('shake'); typed = ''; paint(); }, 450);
+      }
+    };
+    el.querySelector('#home').onclick = () => show(home());
+    return el;
+  }
+
+  // ---------- intro: the piece shows how it moves ----------
+  function intro(p) {
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button><div class="spacer"></div><button class="round" id="again" aria-label="Nog een keer horen">🔊</button></div>
+      <div class="intro"><div class="hero">${pc(p.id)}</div><h2>${p.title}</h2><p>${p.text}</p></div>
+      <div id="bw"></div>
+      <div class="intro"><button class="go" id="go">Ik doe mee! ▶</button></div>
+    </div>`);
+    sizeBoard(el, 470);
+    const bv = boardView(5); el.querySelector('#bw').replaceWith(bv.el);
+    const foes = (p.demo.foes || []).map(f => ({ at: f, tok: bv.add(pc('pion', 'b'), f) }));
+    let at = p.demo.at.slice();
+    const me = bv.add(pc(p.id), at, p.id === 'paard' ? 'hop' : '');
+    const occ = (r, c) => foes.some(f => !f.gone && same(f.at, [r, c])) ? 'foe' : null;
+    let alive = true;
+    (async () => {
+      await sleep(400);
+      while (alive && el.isConnected) {
+        for (const to of p.demo.path) {
+          if (!alive || !el.isConnected) return;
+          bv.marks(movesFor(p.id, at, 5, occ, 3), occ);
+          await sleep(1300);
+          bv.marks([]);
+          const f = foes.find(f => !f.gone && same(f.at, to)); if (f) { f.gone = true; f.tok.classList.add('gone'); }
+          at = to; me.classList.remove('hop'); void me.offsetWidth; if (p.id === 'paard') me.classList.add('hop'); bv.place(me, at);
+          await sleep(550);
+        }
+        await sleep(900);
+        if (p.id === 'pion') { at = p.demo.at.slice(); bv.place(me, at); foes.forEach(f => { f.gone = false; f.tok.classList.remove('gone'); }); await sleep(500); }
+      }
+    })();
+    const talk = () => say(...p.intro);
+    setTimeout(talk, 300);
+    el.querySelector('#again').onclick = talk;
+    el.querySelector('#home').onclick = () => { alive = false; show(home()); };
+    el.querySelector('#go').onclick = () => {
+      alive = false;
+      const d = doneOf(p.id), first = [1, 2, 3, 4, 5].find(k => !d.includes(k)) || 1;
+      show(level(p, first));
+    };
+    return el;
+  }
+
+  // ---------- one exercise ----------
+  function level(p, k) {
+    const L = p.levels[k - 1], n = L.n, startRow = n - 2;
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button>
+        <div class="steps">${[1,2,3,4,5].map(i => `<i class="${i === k ? 'now' : doneOf(p.id).includes(i) ? 'on' : ''}"></i>`).join('')}</div>
+        <button class="round" id="redo" aria-label="Opnieuw beginnen">↺</button><button class="round" id="again" aria-label="Nog een keer horen">🔊</button></div>
+      <p class="prompt">${L.say}</p>
+      <div id="bw"></div>
+    </div>`);
+    sizeBoard(el, 220);
+    const bv = boardView(n); el.querySelector('#bw').replaceWith(bv.el);
+    let type = p.id, at = L.at.slice(), busy = false, mistakes = 0, moves = 0, finished = false;
+    const things = [];
+    (L.stars || []).forEach(s => things.push({ kind: 'star', at: s, tok: bv.add('<span class="em">⭐</span>', s, 'star') }));
+    (L.own || []).forEach(s => things.push({ kind: 'own', at: s, tok: bv.add(pc('pion'), s) }));
+    (L.foes || []).forEach(s => things.push({ kind: 'foe', need: true, at: s, tok: bv.add(pc('pion', 'b'), s) }));
+    (L.extra || []).forEach(s => things.push({ kind: 'foe', at: s, tok: bv.add(pc('pion', 'b'), s) }));
+    const me = bv.add(pc(type), at);
+    const thingAt = (r, c) => things.find(t => !t.gone && same(t.at, [r, c]));
+    const occ = (r, c) => { const t = thingAt(r, c); return t && t.kind !== 'star' ? t.kind : null; };
+    const legal = () => movesFor(type, at, n, occ, startRow);
+    const foeAt = (r, c) => occ(r, c) === 'foe';
+    const showHints = () => bv.marks(legal(), foeAt);
+    if (L.hints) showHints();
+    let hintTimer = null;
+    const flashHints = () => { showHints(); clearTimeout(hintTimer); if (!L.hints) hintTimer = setTimeout(() => !finished && bv.marks([]), 3000); };
+    const remaining = () => things.filter(t => !t.gone && (t.kind === 'star' || t.need)).length;
+    const intro = () => say(L.say);
+    setTimeout(intro, 250);
+    el.querySelector('#again').onclick = intro;
+    el.querySelector('#home').onclick = () => show(home());
+    el.querySelector('#redo').onclick = () => show(level(p, k));
+
+    bv.board.addEventListener('click', async e => {
+      const sq = e.target.closest('.sq'); if (!sq || busy || finished) return;
+      const to = [+sq.dataset.r, +sq.dataset.c];
+      if (same(to, at)) return;
+      if (legal().some(m => same(m, to))) {
+        busy = true; moves++;
+        const t = thingAt(...to);
+        me.classList.remove('hop'); void me.offsetWidth; if (type === 'paard') me.classList.add('hop');
+        bv.place(me, to); at = to; sfx.move();
+        if (!L.hints) bv.marks([]);
+        await sleep(330);
+        if (t) { t.gone = true; t.tok.classList.add('gone'); t.kind === 'star' ? sfx.star() : sfx.take(); }
+        if (type === 'pion' && at[0] === 0) {
+          type = 'dame'; me.innerHTML = pc('dame'); me.classList.add('crown'); sfx.win();
+          await say('Hoera! De pion is een dame geworden!'); await sleep(300);
+          if (L.goal === 'promote') return win();
+        }
+        if (remaining() === 0 && L.goal !== 'promote') return win();
+        // a pawn can walk itself into a corner: start the exercise again
+        if (!solvable(type, at, n, things.filter(x => !x.gone), L.goal, startRow)) {
+          finished = true; await say('Oei, zo lukt het niet meer. We beginnen opnieuw!'); await sleep(400);
+          if (el.isConnected) show(level(p, k));
+          return;
+        }
+        if (t && !S.mute) say(pick(PRAISE));
+        if (L.hints) showHints();
+        busy = false;
+        return;
+      }
+      // a wrong move: say why, show where the piece can go, and keep a note for the parent page
+      mistakes++;
+      const o = occ(...to);
+      let why, line;
+      if (o === 'own') { why = 'eigen stuk'; line = 'Daar staat je eigen pion al.'; }
+      else if (type === 'pion' && o === 'foe' && to[1] === at[1]) { why = 'recht slaan'; line = 'De pion slaat alleen schuin!'; }
+      else if (shapeOk(type, at, to, n, startRow) && type !== 'pion') { why = 'iets in de weg'; line = 'Er staat iets in de weg.'; }
+      else { why = 'verkeerde richting'; line = NOT_LIKE[type]; }
+      logMiss({ piece: p.id, level: k, from: sqName(at, n), to: sqName(to, n), why });
+      sfx.nope(); me.classList.add('shake'); sq.classList.add('flash');
+      setTimeout(() => { me.classList.remove('shake'); sq.classList.remove('flash'); }, 450);
+      flashHints();
+      say(line, 'Kijk maar, hier mag hij heen.');
+    });
+
+    async function win() {
+      finished = true; bv.marks([]); sfx.win();
+      const d = doneOf(p.id), firstTime = !d.includes(k);
+      if (firstTime) S.done[p.id] = d.concat(k).sort();
+      const sticker = pick(STICKERS);
+      S.stickers.push(sticker); save();
+      logLevel({ piece: p.id, level: k, mistakes, moves });
+      await sleep(350);
+      const all = doneOf(p.id).length >= 5 && k === 5;
+      reward(sticker, all ? [KNOWS[p.id]] : [pick(PRAISE), 'Hoera! Je hebt een sticker verdiend!'], all ? p.name : null,
+        k < 5 ? () => show(level(p, k + 1)) : null);
+    }
+    return el;
+  }
+
+  function confetti() {
+    const c = $(`<div class="confetti"></div>`);
+    const cols = ['#ffc93c', '#e8573f', '#7a9c59', '#4aa3df', '#b56be0'];
+    for (let i = 0; i < 40; i++) { const b = document.createElement('i'); b.style.left = Math.random() * 100 + '%'; b.style.background = pick(cols); b.style.animationDelay = Math.random() * .6 + 's'; c.append(b); }
+    document.body.append(c); setTimeout(() => c.remove(), 2600);
+  }
+  // overlay with the new sticker (or the medal piece) and a next step
+  function reward(sticker, lines, medalName, onNext) {
+    confetti();
+    const o = $(`<div class="over"><div class="card">
+      <div class="sticker">${medalName ? '🏅' : sticker}</div>
+      <h2>${medalName ? 'Je kent ' + medalName + ' nu helemaal!' : 'Een sticker voor jou!'}</h2>
+      <div class="row">${onNext ? '<button class="go" id="next">Verder ▶</button>' : ''}<button class="go" id="h" style="background:var(--paper);box-shadow:0 8px 0 var(--shadow)">🏠</button></div>
+    </div></div>`);
+    document.body.append(o);
+    say(...lines);
+    const close = () => o.remove();
+    if (onNext) o.querySelector('#next').onclick = () => { close(); onNext(); };
+    o.querySelector('#h').onclick = () => { close(); show(home()); };
+  }
+
+  // ---------- quiz: which piece is it? ----------
+  function quiz() {
+    let round = 0, target = null;
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button><div class="steps">${[1,2,3,4,5].map(() => '<i></i>').join('')}</div>
+        <button class="round" id="again" aria-label="Nog een keer horen">🔊</button></div>
+      <p class="prompt" id="q"></p><div class="qopts"></div></div>`);
+    const opts = el.querySelector('.qopts'), dots = el.querySelectorAll('.steps i');
+    const next = () => {
+      if (round >= 5) {
+        const sticker = pick(STICKERS); S.stickers.push(sticker); save();
+        logLevel({ piece: 'raadspel', level: 0, mistakes: misses, moves: 5 });
+        return reward(sticker, ['Super!', 'Hoera! Je hebt een sticker verdiend!'], null, () => show(quiz()));
+      }
+      const choice = shuffle(PIECES).slice(0, 3); target = pick(choice);
+      el.querySelector('#q').textContent = WHERE[target.id];
+      opts.innerHTML = '';
+      choice.forEach(p => {
+        const b = $(`<button class="qopt" aria-label="${p.title}">${pc(p.id)}</button>`);
+        b.onclick = async () => {
+          if (p === target) {
+            b.classList.add('right'); sfx.star(); dots[round].classList.add('on'); round++;
+            opts.querySelectorAll('button').forEach(x => x.disabled = true);
+            await say(pick(PRAISE)); await sleep(350); next();
+          } else {
+            b.classList.add('wrong'); b.disabled = true; sfx.nope(); misses++;
+            logMiss({ piece: 'raadspel', level: 0, from: target.id, to: p.id, why: 'ander stuk gekozen' });
+            say(THATIS[p.id], WHERE[target.id]);
+          }
+        };
+        opts.append(b);
+      });
+      setTimeout(() => say(WHERE[target.id]), 200);
+    };
+    let misses = 0;
+    el.querySelector('#again').onclick = () => target && say(WHERE[target.id]);
+    el.querySelector('#home').onclick = () => show(home());
+    setTimeout(next, 0);
+    return el;
+  }
+
+  // ---------- rules engine: any square board, white at the bottom, uppercase = white ----------
+  const VAL = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
+  const TYPE = { p: 'pion', n: 'paard', b: 'loper', r: 'toren', q: 'dame', k: 'koning' };
+  function setup(rows, opts = {}) {
+    const n = rows.length, sq = [];
+    for (const row of rows) for (const ch of row) sq.push(ch === '.' ? null : { t: ch.toLowerCase(), c: ch === ch.toUpperCase() ? 'w' : 'b' });
+    return { n, sq, turn: opts.turn || 'w', ep: -1, castle: opts.castle || '', dbl: !!opts.dbl, last: null };
+  }
+  const other = c => (c === 'w' ? 'b' : 'w');
+  function attacked(G, i, by) {
+    const n = G.n, r = Math.floor(i / n), c = i % n, at = (y, x) => (y >= 0 && x >= 0 && y < n && x < n ? G.sq[y * n + x] : undefined);
+    const is = (p, ts) => p && p.c === by && ts.includes(p.t);
+    const pr = by === 'w' ? r + 1 : r - 1;
+    if (is(at(pr, c - 1), 'p') || is(at(pr, c + 1), 'p')) return true;
+    for (const [dy, dx] of KNIGHT) if (is(at(r + dy, c + dx), 'n')) return true;
+    for (const [dy, dx] of KING) if (is(at(r + dy, c + dx), 'k')) return true;
+    for (const [dy, dx] of KING) {
+      const diag = dy && dx;
+      let y = r + dy, x = c + dx, p;
+      while ((p = at(y, x)) !== undefined) { if (p) { if (is(p, diag ? 'bq' : 'rq')) return true; break; } y += dy; x += dx; }
+    }
+    return false;
+  }
+  const kingOf = (G, col) => G.sq.findIndex(p => p && p.t === 'k' && p.c === col);
+  const inCheck = (G, col) => { const k = kingOf(G, col); return k >= 0 && attacked(G, k, other(col)); };
+  function pseudo(G, col = G.turn) {
+    const n = G.n, out = [];
+    G.sq.forEach((p, f) => {
+      if (!p || p.c !== col) return;
+      const r = Math.floor(f / n), c = f % n, inb = (y, x) => y >= 0 && x >= 0 && y < n && x < n;
+      const add = (y, x, extra) => { const t = y * n + x; out.push(Object.assign({ f, t, p, cap: G.sq[t], promo: p.t === 'p' && (y === 0 || y === n - 1) }, extra)); };
+      if (p.t === 'p') {
+        const d = col === 'w' ? -1 : 1, start = col === 'w' ? n - 2 : 1;
+        if (inb(r + d, c) && !G.sq[(r + d) * n + c]) {
+          add(r + d, c);
+          if (G.dbl && r === start && !G.sq[(r + 2 * d) * n + c]) add(r + 2 * d, c, { double: true });
+        }
+        for (const dx of [-1, 1]) {
+          if (!inb(r + d, c + dx)) continue;
+          const t = (r + d) * n + c + dx, q = G.sq[t];
+          if (q && q.c !== col) add(r + d, c + dx);
+          else if (t === G.ep) add(r + d, c + dx, { ep: true, cap: G.sq[r * n + c + dx] });
+        }
+      } else if (p.t === 'n' || p.t === 'k') {
+        for (const [dy, dx] of p.t === 'n' ? KNIGHT : KING) { const y = r + dy, x = c + dx; if (inb(y, x) && (!G.sq[y * n + x] || G.sq[y * n + x].c !== col)) add(y, x); }
+      } else {
+        for (const [dy, dx] of DIRS[{ r: 'toren', b: 'loper', q: 'dame' }[p.t]]) {
+          let y = r + dy, x = c + dx;
+          while (inb(y, x)) { const q = G.sq[y * n + x]; if (q && q.c === col) break; add(y, x); if (q) break; y += dy; x += dx; }
+        }
+      }
+      // castling on a full board: king and rook unmoved, squares between empty, king not passing through check
+      if (p.t === 'k' && n === 8 && f === (col === 'w' ? 60 : 4)) {
+        const K = col === 'w' ? 'K' : 'k', Q = col === 'w' ? 'Q' : 'q', o = other(col);
+        if (G.castle.includes(K) && !G.sq[f + 1] && !G.sq[f + 2] && !attacked(G, f, o) && !attacked(G, f + 1, o) && !attacked(G, f + 2, o)) add(r, c + 2, { castle: 'K' });
+        if (G.castle.includes(Q) && !G.sq[f - 1] && !G.sq[f - 2] && !G.sq[f - 3] && !attacked(G, f, o) && !attacked(G, f - 1, o) && !attacked(G, f - 2, o)) add(r, c - 2, { castle: 'Q' });
+      }
+    });
+    return out;
+  }
+  function make(G, m) {
+    const n = G.n, sq = G.sq.slice();
+    sq[m.t] = m.promo ? { t: 'q', c: m.p.c } : m.p; sq[m.f] = null;
+    if (m.ep) sq[m.t + (m.p.c === 'w' ? n : -n)] = null;
+    if (m.castle === 'K') { sq[m.f + 1] = sq[m.f + 3]; sq[m.f + 3] = null; }
+    if (m.castle === 'Q') { sq[m.f - 1] = sq[m.f - 4]; sq[m.f - 4] = null; }
+    let castle = G.castle;
+    if (castle) {
+      const drop = s => { castle = castle.replace(s, ''); };
+      if (m.p.t === 'k') m.p.c === 'w' ? (drop('K'), drop('Q')) : (drop('k'), drop('q'));
+      [[63, 'K'], [56, 'Q'], [7, 'k'], [0, 'q']].forEach(([s, ch]) => { if (m.f === s || m.t === s) drop(ch); });
+    }
+    return { n, sq, turn: other(G.turn), ep: m.double ? (m.f + m.t) / 2 : -1, castle, dbl: G.dbl, last: m };
+  }
+  const legal = G => pseudo(G).filter(m => !inCheck(make(G, m), G.turn));
+  const isMate = G => inCheck(G, G.turn) && legal(G).length === 0;
+
+  // the computer: greedy one-move look with a quick look at the answer, plus noise so Thiago can win
+  function aiMove(G, level) {
+    const me = G.turn, noise = level === 'gewoon' ? 1.5 : 14;
+    let best = null, bestScore = -Infinity;
+    for (const m of legal(G)) {
+      const A = make(G, m);
+      let s = (m.cap ? VAL[m.cap.t] * 10 : 0) + (m.promo ? 70 : 0) + Math.random() * noise;
+      const replies = legal(A);
+      if (!replies.length) s += inCheck(A, A.turn) ? 10000 : -50;
+      else if (inCheck(A, A.turn)) s += 2;
+      if (level === 'gewoon' || Math.random() < .5) {
+        let worst = 0;
+        for (const r of replies) { const g = (r.cap ? VAL[r.cap.t] * 10 : 0) + (r.promo ? 60 : 0); if (g > worst) worst = g; }
+        s -= worst * .9;
+      }
+      if (m.p.t === 'p') s += (me === 'w' ? G.n - Math.floor(m.t / G.n) : Math.floor(m.t / G.n)) * .4;
+      if (s > bestScore) { bestScore = s; best = m; }
+    }
+    return best;
+  }
+
+  // ---------- spelen ----------
+  const FULL = ['rnbqkbnr', 'pppppppp', '........', '........', '........', '........', 'PPPPPPPP', 'RNBQKBNR'];
+  const PLAY = [
+    { id: 'race', title: 'Pionnenrace', sub: 'Wie is eerst aan de overkant?', icon: pc('pion'),
+      start: () => setup(['......', 'pppppp', '......', '......', 'PPPPPP', '......']), say: ['Breng een pion naar de overkant!', 'Jij bent wit. Jij mag beginnen!'] },
+    { id: 'schaak', title: 'Schaak!', sub: 'Red de koning', icon: pc('koning'), puzzles: 'schaak' },
+    { id: 'mat', title: 'Schaakmat', sub: 'Zet de koning vast', icon: pc('dame'), puzzles: 'mat' },
+    { id: 'mini', title: 'Kleine partij', sub: 'Op een bord van 6 bij 6', icon: pc('paard'),
+      start: () => setup(['rnqknr', 'pppppp', '......', '......', 'PPPPPP', 'RNQKNR']), say: ['Een kleine partij. Zet de koning van de computer schaakmat!', 'Jij bent wit. Jij mag beginnen!'] },
+    { id: 'full', title: 'Echte partij', sub: 'Tegen de computer', icon: pc('toren'),
+      start: () => setup(FULL, { dbl: true, castle: 'KQkq' }), say: ['Een echte partij!', 'Jij bent wit. Jij mag beginnen!'] },
+    { id: 'samen', title: 'Samen spelen', sub: 'Met papa of mama', icon: pc('koning', 'b'), two: true,
+      start: () => setup(FULL, { dbl: true, castle: 'KQkq' }), say: ['Samen spelen! Wit mag beginnen.'] },
+  ];
+  const PBY = Object.fromEntries(PLAY.map(p => [p.id, p]));
+  // Puzzles: white to move. "schaak": any legal move saves the king. "mat": find a move that mates.
+  const PUZZLES = {
+    schaak: [
+      ['k.......', '........', '........', '........', '........', '........', '........', 'r...K...'],
+      ['k...r...', '........', '........', '........', '........', '........', '........', '....K...'],
+      ['k.......', '........', '........', '........', '........', '........', '....r...', '....K...'],
+      ['k.......', '........', '........', '........', '........', '...n....', '........', '....K...'],
+      ['k.......', '........', '........', '........', '.b......', '........', 'R.......', '....K...'],
+    ],
+    mat: [
+      ['......k.', '.....ppp', '........', '........', '........', '........', '........', 'R.....K.'],
+      ['.......k', '........', '......K.', '........', '........', '........', '........', 'R.......'],
+      ['....k...', 'R.......', '........', '........', '........', '........', '........', '....K..R'],
+      ['....k...', '........', '....K...', '........', '........', '........', '........', 'Q.......'],
+      ['.......k', '........', '......K.', '........', '........', '........', '........', '..Q.....'],
+    ],
+  };
+  const playDone = id => (S.play && S.play[id]) || 0;
+  const bumpPlay = id => { S.play = Object.assign({}, S.play, { [id]: playDone(id) + 1 }); save(); };
+
+  function playBoard(G, el) {
+    const bv = boardView(G.n);
+    const toks = new Map();
+    const draw = () => {
+      bv.board.querySelector('.layer').innerHTML = ''; toks.clear();
+      G.sq.forEach((p, i) => { if (p) toks.set(i, bv.add(pc(TYPE[p.t], p.c), [Math.floor(i / G.n), i % G.n])); });
+    };
+    draw();
+    const rc = i => [Math.floor(i / G.n), i % G.n];
+    // animate one move from G to the new position
+    const animate = (m, next) => {
+      const tok = toks.get(m.f), capAt = m.ep ? m.t + (m.p.c === 'w' ? G.n : -G.n) : m.t;
+      const dead = toks.get(capAt);
+      if (dead) { dead.classList.add('gone'); setTimeout(() => dead.remove(), 320); toks.delete(capAt); }
+      toks.delete(m.f); toks.set(m.t, tok); bv.place(tok, rc(m.t));
+      if (m.p.t === 'n') { tok.classList.remove('hop'); void tok.offsetWidth; tok.classList.add('hop'); }
+      if (m.castle) {
+        const [rf, rt] = m.castle === 'K' ? [m.f + 3, m.f + 1] : [m.f - 4, m.f - 1];
+        const rook = toks.get(rf); toks.delete(rf); toks.set(rt, rook); bv.place(rook, rc(rt));
+      }
+      if (m.promo) setTimeout(() => { tok.innerHTML = pc('dame', m.p.c); tok.classList.add('crown'); }, 380);
+      G = next;
+      bv.cell(...rc(m.f)).classList.add('last'); 
+    };
+    return { bv, animate, set: g => { G = g; draw(); }, rc };
+  }
+
+  function game(mode, puzzleIndex = 0) {
+    const P = PBY[mode], puzzle = P.puzzles;
+    const level = S.aiLevel || 'makkelijk';
+    let G = puzzle ? setup(PUZZLES[puzzle][puzzleIndex]) : P.start();
+    const history = [];
+    let sel = -1, busy = false, over = false, mistakes = 0;
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button>
+        <div class="steps">${puzzle ? [0,1,2,3,4].map(i => `<i class="${i === puzzleIndex ? 'now' : i < puzzleIndex ? 'on' : ''}"></i>`).join('') : `<b style="font-size:24px">${P.title}</b>`}</div>
+        ${puzzle ? '' : '<button class="round" id="undo" aria-label="Zet terugnemen">↶</button>'}<button class="round" id="again" aria-label="Nog een keer horen">🔊</button></div>
+      <p class="prompt" id="msg"></p>
+      <div id="bw"></div>
+    </div>`);
+    sizeBoard(el, 220);
+    const view = playBoard(G, el), bv = view.bv, rc = view.rc;
+    el.querySelector('#bw').replaceWith(bv.el);
+    const msg = el.querySelector('#msg');
+    const tell = (text, ...extra) => { msg.textContent = text; return say(text, ...extra); };
+    const intro = puzzle === 'schaak' ? ['Je koning staat schaak! Zet hem in veiligheid.']
+      : puzzle === 'mat' ? (puzzleIndex === 0 ? ['Kun jij schaakmat zetten?', 'Schaakmat betekent: de koning staat schaak en kan nergens meer heen.'] : ['Kun jij schaakmat zetten?'])
+      : P.say;
+    msg.textContent = intro[0];
+    setTimeout(() => say(...intro), 250);
+    el.querySelector('#again').onclick = () => say(msg.textContent);
+    el.querySelector('#home').onclick = () => show(home());
+
+    const clearMarks = () => { bv.marks([]); el.querySelectorAll('.sq.sel,.sq.check').forEach(s => s.classList.remove('sel', 'check')); };
+    const markCheck = () => { const k = kingOf(G, G.turn); if (k >= 0 && inCheck(G, G.turn)) bv.cell(...rc(k)).classList.add('check'); };
+    const showSel = () => {
+      clearMarks(); markCheck();
+      if (sel < 0) return;
+      bv.cell(...rc(sel)).classList.add('sel');
+      const ms = legal(G).filter(m => m.f === sel);
+      bv.marks(ms.map(m => rc(m.t)), (r, c) => !!G.sq[r * G.n + c] || ms.some(m => m.ep && m.t === r * G.n + c));
+      // marks() wipes the selection ring; put it back
+      bv.cell(...rc(sel)).classList.add('sel'); markCheck();
+    };
+    if (puzzle) markCheck();
+    const human = () => P.two || G.turn === 'w';
+    const raceWin = g => {
+      if (mode !== 'race') return null;
+      const n = g.n;
+      if (g.sq.slice(0, n).some(p => p && p.c === 'w')) return 'w';
+      if (g.sq.slice(n * (n - 1)).some(p => p && p.c === 'b')) return 'b';
+      if (!g.sq.some(p => p && p.c === 'b')) return 'w';
+      if (!g.sq.some(p => p && p.c === 'w')) return 'b';
+      return null;
+    };
+    async function play(m) {
+      busy = true; sel = -1; clearMarks();
+      el.querySelectorAll('.sq.last').forEach(s => s.classList.remove('last'));
+      const next = make(G, m);
+      history.push(G);
+      view.animate(m, next); G = next;
+      bv.cell(...rc(m.t)).classList.add('last');
+      m.cap ? sfx.take() : sfx.move();
+      await sleep(420);
+      if (m.castle) await say('Rokeren! De koning en de toren wisselen van plaats.');
+      if (m.ep) await say('En passant! De pion slaat in het voorbijgaan.');
+      if (m.promo && mode !== 'race') await say('Hoera! De pion is een dame geworden!');
+      return after(m);
+    }
+    async function after(m) {
+      const rw = raceWin(G);
+      if (rw) return finish(rw === 'w' ? 'win' : 'loss');
+      const moves = legal(G);
+      if (!moves.length) {
+        if (inCheck(G, G.turn)) return finish(P.two ? (G.turn === 'b' ? 'wwin' : 'bwin') : G.turn === 'b' ? 'win' : 'loss');
+        return finish('draw');
+      }
+      if (puzzle) return;
+      markCheck();
+      if (inCheck(G, G.turn)) await tell('Schaak!', ...(G.turn === 'w' && !P.two ? ['Je koning staat schaak! Zet hem in veiligheid.'] : []));
+      else if (P.two) tell(G.turn === 'w' ? 'Nu is wit aan de beurt.' : 'Nu is zwart aan de beurt.');
+      else if (G.turn === 'w') msg.textContent = 'Jij bent aan de beurt.';
+      if (!human()) {
+        msg.textContent = 'De computer denkt na…';
+        await sleep(650);
+        if (!el.isConnected || over) return;
+        return play(aiMove(G, level));
+      }
+      busy = false;
+    }
+    async function finish(res) {
+      over = true; busy = true; clearMarks();
+      const lines = {
+        win: mode === 'race' ? ['Hoera! Jouw pion is aan de overkant!'] : ['Schaakmat! Jij hebt gewonnen!'],
+        loss: mode === 'race' ? ['De computer was eerst. Nog een keer?'] : ['Schaakmat. De computer heeft gewonnen. Nog een keer?'],
+        draw: inCheck(G, G.turn) || mode === 'race' ? ['Gelijkspel!'] : ['Pat! Niemand kan meer zetten. Gelijkspel!'],
+        wwin: ['Schaakmat! Wit heeft gewonnen!'], bwin: ['Schaakmat! Zwart heeft gewonnen!'],
+      }[res];
+      logLevel({ piece: 'spel:' + mode, level: 0, mistakes, moves: history.length, result: res });
+      await sleep(500);
+      if (res === 'loss') {
+        msg.textContent = lines[0]; say(...lines);
+        const o = $(`<div class="over"><div class="card"><div class="sticker">${pc('koning', 'b')}</div><h2>De computer heeft gewonnen</h2>
+          <div class="row"><button class="go" id="again2">Nog een keer ▶</button><button class="go" id="h" style="background:var(--paper);box-shadow:0 8px 0 var(--shadow)">🏠</button></div></div></div>`);
+        document.body.append(o);
+        o.querySelector('#again2').onclick = () => { o.remove(); show(game(mode)); };
+        o.querySelector('#h').onclick = () => { o.remove(); show(home()); };
+        return;
+      }
+      if (res !== 'draw') bumpPlay(mode);
+      sfx.win();
+      const sticker = pick(STICKERS); S.stickers.push(sticker); save();
+      msg.textContent = lines[0];
+      reward(sticker, lines.concat('Hoera! Je hebt een sticker verdiend!'), null, () => show(game(mode)));
+    }
+
+    // puzzle checks run before the move is kept
+    async function tryPuzzle(m) {
+      const A = make(G, m);
+      if (puzzle === 'schaak' || isMate(A)) {
+        busy = true; sel = -1; clearMarks();
+        view.animate(m, A); G = A; m.cap ? sfx.take() : sfx.star();
+        await sleep(450);
+        await say(puzzle === 'schaak' ? 'Je hebt de koning gered!' : 'Schaakmat! De koning kan nergens meer heen.');
+        if (puzzleIndex < 4) return show(game(mode, puzzleIndex + 1));
+        bumpPlay(mode); logLevel({ piece: 'spel:' + mode, level: 0, mistakes, moves: 5, result: 'win' });
+        const sticker = pick(STICKERS); S.stickers.push(sticker); save();
+        return reward(sticker, ['Super!', 'Hoera! Je hebt een sticker verdiend!'], null, () => show(game(mode, 0)));
+      }
+      // not mate: show the move, then take it back
+      busy = true; sel = -1; clearMarks(); mistakes++;
+      logMiss({ piece: 'spel:' + mode, level: puzzleIndex + 1, from: sqName(rc(m.f), G.n), to: sqName(rc(m.t), G.n), why: 'geen mat' });
+      const before = G;
+      view.animate(m, A); G = A;
+      await tell('Bijna! Dan kan de koning nog ontsnappen. Probeer nog eens.');
+      view.set(before); G = before; busy = false;
+    }
+
+    bv.board.addEventListener('click', async e => {
+      const sq = e.target.closest('.sq'); if (!sq || busy || over) return;
+      const i = +sq.dataset.r * G.n + +sq.dataset.c, p = G.sq[i];
+      if (sel >= 0) {
+        const m = legal(G).find(m => m.f === sel && m.t === i);
+        if (m) return puzzle ? tryPuzzle(m) : play(m);
+      }
+      if (p && p.c === G.turn && human()) { sel = i; showSel(); sfx.move(); return; }
+      if (p && !P.two && p.c === 'b' && sel < 0) { tell('Dat stuk is van de computer.'); return; }
+      if (sel < 0) { tell('Tik op een stuk van jou.'); return; }
+      // a move that is not allowed: explain why
+      mistakes++;
+      const pm = pseudo(G).find(m => m.f === sel && m.t === i);
+      const type = TYPE[G.sq[sel].t];
+      logMiss({ piece: 'spel:' + mode, level: puzzle ? puzzleIndex + 1 : 0, from: sqName(rc(sel), G.n), to: sqName(rc(i), G.n), why: pm ? 'koning schaak' : 'verkeerde zet' });
+      sfx.nope(); sq.classList.add('flash'); setTimeout(() => sq.classList.remove('flash'), 450);
+      if (pm) tell(inCheck(G, G.turn) ? 'Je koning staat nog steeds schaak!' : 'Pas op! Dan staat je koning schaak.');
+      else tell(NOT_LIKE[type], 'Kijk maar, hier mag hij heen.');
+    });
+    const undo = el.querySelector('#undo');
+    if (undo) undo.onclick = () => {
+      if (busy || over || !history.length) return;
+      // take back the computer's answer too, so it is Thiago's turn again
+      let back = P.two ? 1 : 2;
+      while (back-- > 0 && history.length) G = history.pop();
+      if (!P.two && G.turn !== 'w' && history.length) G = history.pop();
+      sel = -1; view.set(G); clearMarks(); markCheck(); el.querySelectorAll('.sq.last').forEach(s => s.classList.remove('last'));
+      msg.textContent = 'Jij bent aan de beurt.';
+    };
+    return el;
+  }
+
+  // ---------- sticker book ----------
+  function book() {
+    const total = Math.max(30, Math.ceil((S.stickers.length + 1) / 6) * 6);
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button><h2 style="margin:0;font-size:34px">Mijn stickers</h2></div>
+      <div class="medals">${PIECES.map(p => `<div class="${doneOf(p.id).length >= 5 ? '' : 'off'}">${pc(p.id)}🏅</div>`).join('')}</div>
+      <div class="book">${Array.from({ length: total }, (_, i) => S.stickers[i] ? `<div>${S.stickers[i]}</div>` : '<div class="empty"></div>').join('')}</div>
+    </div>`);
+    el.querySelector('#home').onclick = () => show(home());
+    setTimeout(() => S.stickers.length && say('Super!'), 200);
+    return el;
+  }
+
+  // ---------- parent page ----------
+  function parent() {
+    const el = $(`<div class="screen">
+      <div class="bar"><button class="round" id="home" aria-label="Terug">🏠</button><h2 style="margin:0;font-size:32px">Voor ouders</h2></div>
+      <div class="report"><h3>Per stuk</h3><div class="tablewrap"><table><thead><tr><th>Stuk</th><th>Oefeningen af</th><th>Foute zetten</th><th>Hoe gaat het</th></tr></thead><tbody id="sum"></tbody></table></div>
+        <p class="note">"Makkelijk" betekent gemiddeld hooguit één foute zet per oefening. Bij "nog lastig" helpt het om het stuk samen op een echt bord te laten lopen.</p></div>
+      <div class="report" id="days"></div>
+      <div class="report"><h3>Computer</h3>
+        <div class="row" style="justify-content:flex-start"><select id="ailvl" class="chip" style="font-family:var(--read)"><option value="makkelijk">Makkelijk (laat veel liggen)</option><option value="gewoon">Gewoon (let beter op)</option></select></div>
+        <p class="note">Bij elk spel kan Thiago een zet terugnemen met ↶. Pionnenrace: wie het eerst een pion aan de overkant heeft, wint.</p></div>
+      <div class="report"><h3>Stem</h3>
+        <div class="row" style="justify-content:flex-start"><select id="vsel" class="chip" style="font-family:var(--read)"></select><button class="chip" id="vtest">🔊 Test</button></div>
+        <p class="note" id="vnote"></p></div>
+      <div class="report"><h3>Wissen</h3><p class="note">Handig na het zelf uitproberen. Stickers en voortgang van Thiago blijven staan bij "wis vandaag".</p>
+        <div class="row" style="justify-content:flex-start"><button class="chip danger" id="wday">Wis vandaag</button><button class="chip danger" id="wall">Wis alles (ook stickers)</button></div>
+        <div id="confirm"></div></div>
+    </div>`);
+    el.querySelector('#home').onclick = () => show(home());
+    const ail = el.querySelector('#ailvl'); ail.value = S.aiLevel || 'makkelijk'; ail.onchange = () => { S.aiLevel = ail.value; save(); };
+    const vsel = el.querySelector('#vsel'), vnote = el.querySelector('#vnote');
+    const fillVoices = () => {
+      const opts = [['', framed ? 'Automatisch (opnames)' : 'Automatisch (beste iPad-stem)'], ['opname', 'Ingebouwde opnames']]
+        .concat(dutchVoices().map(v => ['ipad:' + v.name, 'iPad: ' + v.name]));
+      vsel.innerHTML = opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+      vsel.value = S.voiceMode === 'ipad' ? 'ipad:' + S.voiceName : (S.voiceMode || '');
+      const b = bestVoice();
+      vnote.textContent = framed ? 'Binnen Claude negeert de iPad zijn eigen stemmen; daarom worden hier de opnames gebruikt.'
+        : b ? `Gekozen iPad-stem: ${b.name}. Een betere versie downloaden: Instellingen > Toegankelijkheid > Gesproken materiaal > Stemmen > Nederlands > Xander (Verbeterd).` : 'Geen Nederlandse iPad-stem gevonden.';
+    };
+    fillVoices(); if (window.speechSynthesis) setTimeout(fillVoices, 600);
+    vsel.onchange = () => { const v = vsel.value; S.voiceMode = v.startsWith('ipad:') ? 'ipad' : v; S.voiceName = v.startsWith('ipad:') ? v.slice(5) : ''; save(); fillVoices(); say('Dit is het paard.'); };
+    el.querySelector('#vtest').onclick = () => { if (S.mute) { S.mute = false; save(); } say('Dit is het paard.', 'Het paard springt! Twee stapjes rechtdoor en dan één opzij.'); };
+    const days = Object.values(LOG).sort((a, b) => b.date.localeCompare(a.date));
+    const sum = el.querySelector('#sum');
+    PIECES.forEach(p => {
+      const lv = days.flatMap(d => d.levels.filter(l => l.piece === p.id));
+      const miss = days.reduce((a, d) => a + d.misses.filter(m => m.piece === p.id).length, 0);
+      const done = doneOf(p.id).length;
+      const tag = !lv.length ? '<span class="tag new">nog niet gedaan</span>' : miss <= lv.length ? '<span class="tag ok">makkelijk</span>' : '<span class="tag hard">nog lastig</span>';
+      sum.append($(`<table><tr><td>${p.title}</td><td>${done} van 5</td><td>${miss}</td><td>${tag}</td></tr></table>`).querySelector('tr'));
+    });
+    const fmt = d => new Date(d + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+    const tm = t => new Date(t).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    const nameOf = id => (BY[id] ? BY[id].title : id.startsWith('spel:') ? (PBY[id.slice(5)] || {}).title || 'Spel' : 'Raad het stuk');
+    const RES = { win: 'gewonnen', loss: 'verloren', draw: 'gelijk', wwin: 'wit won', bwin: 'zwart won' };
+    const box = el.querySelector('#days');
+    if (!days.length) box.innerHTML = '<h3>Per dag</h3><p class="note">Nog niets gespeeld op dit apparaat.</p>';
+    else box.innerHTML = '<h3>Per dag</h3>' + days.slice(0, 14).map(d => `
+      <h3 style="font-size:19px;margin-top:14px">${fmt(d.date)}: ${d.levels.length} oefening${d.levels.length === 1 ? '' : 'en'} af</h3>
+      ${d.levels.length ? `<p class="note">${d.levels.map(l => `${nameOf(l.piece)}${l.level ? ' ' + l.level : ''} (${l.result && RES[l.result] ? RES[l.result] + ', ' : ''}${l.mistakes} fout)`).join(' · ')}</p>` : ''}
+      ${d.misses.length ? `<ul class="misses">${d.misses.slice(-30).reverse().map(m => `<li><span>${tm(m.t)}</span> ${nameOf(m.piece)}${m.level ? ' ' + m.level : ''}: ${m.piece === 'raadspel' ? `zocht ${m.from}, koos ${m.to}` : `van ${m.from} naar ${m.to} (${m.why})`}</li>`).join('')}</ul>` : '<p class="note">Geen foute zetten.</p>'}`).join('');
+    const confirm = (label, run) => {
+      const c = el.querySelector('#confirm');
+      c.innerHTML = `<div class="confirm"><span>${label}</span><button class="chip danger" id="yes">Ja, wissen</button><button class="chip" id="no">Nee</button></div>`;
+      c.querySelector('#no').onclick = () => c.innerHTML = '';
+      c.querySelector('#yes').onclick = async () => { await run(); show(parent()); };
+    };
+    el.querySelector('#wday').onclick = () => confirm('Alle oefeningen en fouten van vandaag wissen?', async () => {
+      delete LOG[today()]; try { localStorage.setItem(LOGKEY, JSON.stringify(LOG)); } catch (e) {}
+      if (db) await db.collection('days').doc(today()).delete().catch(() => {});
+    });
+    el.querySelector('#wall').onclick = () => confirm('Alles wissen: voortgang, stickers en geschiedenis?', async () => {
+      const dates = Object.keys(LOG);
+      LOG = {}; S = Object.assign(fresh(), { mute: S.mute, voiceMode: S.voiceMode, voiceName: S.voiceName, aiLevel: S.aiLevel });
+      try { localStorage.setItem(LOGKEY, '{}'); localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+      if (db) {
+        await db.doc('progress/state').set({ done: {}, stickers: [], play: {}, updated: Date.now() }).catch(() => {});
+        const snap = await db.collection('days').get().catch(() => null);
+        const ids = new Set(dates); if (snap) snap.docs.forEach(d => ids.add(d.id));
+        for (const id of ids) await db.collection('days').doc(id).delete().catch(() => {});
+      }
+    });
+    return el;
+  }
+
+  show(home());
+
+  // merge with the shared store once it answers
+  (async () => {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const d = await window.claude.use('db');
+      if (!d) return;
+      const snap = await d.doc('progress/state').get();
+      if (snap.exists) {
+        const r = snap.data() || {};
+        for (const [id, ks] of Object.entries(r.done || {})) S.done[id] = [...new Set([...(S.done[id] || []), ...ks])].sort();
+        if ((r.stickers || []).length > S.stickers.length) S.stickers = r.stickers;
+        for (const [id, w] of Object.entries(r.play || {})) if (w > playDone(id)) S.play = Object.assign({}, S.play, { [id]: w });
+      }
+      const days = await d.collection('days').get().catch(() => null);
+      if (days) days.docs.forEach(x => { const v = x.data(); if (v && v.date && (!LOG[v.date] || (v.levels || []).length + (v.misses || []).length > LOG[v.date].levels.length + LOG[v.date].misses.length)) LOG[v.date] = { date: v.date, levels: v.levels || [], misses: v.misses || [] }; });
+      try { localStorage.setItem(LOGKEY, JSON.stringify(LOG)); } catch (e) {}
+      db = d;
+      save();
+      if (app.querySelector('.hello')) show(home());
+    } catch (e) {}
+  })();
+})();
+</script>
