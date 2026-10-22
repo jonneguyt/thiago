@@ -321,6 +321,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
   const deviceSay = text => {
     if (!window.speechSynthesis) return;
     try {
+      // iPad hands out fresh voice objects; a stale one is silently replaced by the English default
+      pickVoice();
       const u = new SpeechSynthesisUtterance(text);
       if (voice) { u.voice = voice; u.lang = voice.lang.replace('_', '-'); } else u.lang = 'nl-NL';
       u.rate = .88; speechSynthesis.speak(u);
@@ -629,6 +631,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
           <select id="focussel"><option value="">geen</option>${'abcdefghijklmnoprstuvwz'.split('').map(l => `<option value="${l}">${l}</option>`).join('')}</select>
         </label>
       </div>
+      <p class="parent" id="voicediag"></p>
       <div class="settings" id="wipe">
         <button class="chip" id="wipetoday">Wis vandaag</button>
         <button class="chip" id="wipeall">Wis alles</button>
@@ -642,6 +645,9 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         + list.map(v => `<option value="${v.name.replace(/"/g, '&quot;')}">${v.name}</option>`).join('')
         + `<option value="builtin">Computerstem (als er geen andere is)</option>`;
       sel.value = S.voiceName || '';
+      pickVoice();
+      const framed = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+      panel.querySelector('#voicediag').textContent = `Gebruikt nu: ${S.voiceName === 'builtin' ? 'computerstem' : voice ? `${voice.name} (${voice.lang})` : 'geen Nederlandse stem gevonden'} · ${dutchVoices().length} Nederlandse stem(men) op dit apparaat` + (framed ? ' · let op: binnen de Claude-app negeert de iPad de stemkeuze, open de site in Safari.' : '');
     };
     sel.onchange = () => { S.voiceName = sel.value; save(); if (S.voiceName === 'builtin') loadClips(); pickVoice(); say('Hoi Thiago!', 'Hoeveel Pikachu zie je?'); };
     panel.querySelector('#voicetest').onclick = () => { if (S.mute) { S.mute = false; save(); } say('Hoi Thiago!', 'Hoeveel Pikachu zie je?'); };
