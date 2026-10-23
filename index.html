@@ -345,14 +345,26 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     pickVoice(); speechSynthesis.onvoiceschanged = pickVoice;
     let tries = 0; const poll = setInterval(() => { if (pickVoice() || ++tries > 20) clearInterval(poll); }, 250);
   }
+  // Pokémon names sound best in English, so they get their own utterance with an English voice
+  const NAME_RE = new RegExp(`\\b(${POKE.map(p => p[1]).join('|')})\\b`);
+  const englishVoice = () => {
+    const vs = allVoices().filter(v => /^en([-_]|$)/i.test(v.lang || ''));
+    return vs.find(v => /en[-_](US|GB)/i.test(v.lang) && /(Premium|Enhanced|Verbeterd)/i.test(v.name))
+        || vs.find(v => /en[-_](US|GB)/i.test(v.lang) && /(Samantha|Daniel|Karen|Moira|Google)/i.test(v.name))
+        || vs.find(v => /en[-_](US|GB)/i.test(v.lang)) || vs[0] || null;
+  };
   const deviceSay = text => {
     if (!window.speechSynthesis) return;
     try {
       // iPad hands out fresh voice objects; a stale one is silently replaced by the English default
       pickVoice();
-      const u = new SpeechSynthesisUtterance(text);
-      if (voice) { u.voice = voice; u.lang = voice.lang.replace('_', '-'); } else u.lang = 'nl-NL';
-      u.rate = .88; speechSynthesis.speak(u);
+      const en = englishVoice();
+      text.split(NAME_RE).filter(t => t.trim()).forEach(part => {
+        const u = new SpeechSynthesisUtterance(part);
+        const v = NAME_RE.test(part) ? en : voice;
+        if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); } else u.lang = NAME_RE.test(part) ? 'en-US' : 'nl-NL';
+        u.rate = .88; speechSynthesis.speak(u);
+      });
     } catch (e) {}
   };
   // say('Goed zo!', '7') plays each phrase in turn
