@@ -821,7 +821,8 @@ th { font-family: var(--ui); font-weight: 600; color: var(--ink-soft); }
   const FULL = ['rnbqkbnr', 'pppppppp', '........', '........', '........', '........', 'PPPPPPPP', 'RNBQKBNR'];
   const PLAY = [
     { id: 'race', title: 'Pionnenrace', sub: 'Wie is eerst aan de overkant?', icon: pc('pion'),
-      start: () => setup(['......', 'pppppp', '......', '......', 'PPPPPP', '......']), say: ['Breng een pion naar de overkant!', 'Jij bent wit. Jij mag beginnen!'] },
+      start: () => setup(['........', 'pppppppp', '........', '........', '........', '........', 'PPPPPPPP', '........'], { dbl: true }),
+      say: ['Breng een pion naar de overkant!', 'Bij zijn allereerste stapje mag de pion twee vakjes vooruit.', 'Jij bent wit. Jij mag beginnen!'] },
     { id: 'schaak', title: 'Schaak!', sub: 'Red de koning', icon: pc('koning'), puzzles: 'schaak' },
     { id: 'mat', title: 'Schaakmat', sub: 'Zet de koning vast', icon: pc('dame'), puzzles: 'mat' },
     { id: 'mini', title: 'Kleine partij', sub: 'Op een bord van 6 bij 6', icon: pc('paard'),
