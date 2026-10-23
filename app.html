@@ -332,26 +332,27 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     pickVoice(); speechSynthesis.onvoiceschanged = pickVoice;
     let tries = 0; const poll = setInterval(() => { if (pickVoice() || ++tries > 20) clearInterval(poll); }, 250);
   }
-  // Pokémon names sound best in English, so they get their own utterance with an English voice
-  const NAME_RE = new RegExp(`\\b(${POKE.map(p => p[1]).join('|')})\\b`);
-  const englishVoice = () => {
-    const vs = allVoices().filter(v => /^en([-_]|$)/i.test(v.lang || ''));
-    return vs.find(v => /en[-_](US|GB)/i.test(v.lang) && /(Premium|Enhanced|Verbeterd)/i.test(v.name))
-        || vs.find(v => /en[-_](US|GB)/i.test(v.lang) && /(Samantha|Daniel|Karen|Moira|Google)/i.test(v.name))
-        || vs.find(v => /en[-_](US|GB)/i.test(v.lang)) || vs[0] || null;
+  // Pokémon names should sound English, but switching to an English voice adds a pause and a second voice,
+  // so the Dutch voice reads them from a Dutch spelling of the English pronunciation.
+  const SOUND = {
+    Pikachu: 'Piekatsjoe', Bulbasaur: 'Bulbasor', Charmander: 'Tsjarmender', Squirtle: 'Skwurtul', Eevee: 'Iewie',
+    Jigglypuff: 'Djiggeliepuf', Psyduck: 'Saaiduk', Meowth: 'Mie-ouf', Snorlax: 'Snorlaks', Togepi: 'Toogeepie',
+    Pichu: 'Pietsjoe', Magikarp: 'Medjiekarp', Ditto: 'Dittoo', Slowpoke: 'Sloopook', Vulpix: 'Vulpiks',
+    Gengar: 'Genggar', Charizard: 'Tsjarriezard', Dragonite: 'Dreggonaait', Mew: 'Mjoe', Chikorita: 'Tsjiekoorieta',
+    Cyndaquil: 'Sindakwil', Totodile: 'Tootoodaail', Treecko: 'Triekoo', Torchic: 'Tortsjik', Mudkip: 'Mudkip',
+    Piplup: 'Piplup', Lucario: 'Loekaarioo', Rowlet: 'Roolet', Litten: 'Litten', Popplio: 'Popplieoo',
+    Sprigatito: 'Spriegatietoo', Fuecoco: 'Foeweekookoo', Quaxly: 'Kweksli', Espeon: 'Espiejon', Umbreon: 'Umbriejon',
+    Leafeon: 'Liefiejon', Glaceon: 'Gleesiejon', Sylveon: 'Silviejon', 'Pokémon': 'Pookeemon', 'Pokébal': 'Pookeebal'
   };
+  const SOUND_RE = new RegExp(`(${Object.keys(SOUND).join('|')})`, 'g');
   const deviceSay = text => {
     if (!window.speechSynthesis) return;
     try {
       // iPad hands out fresh voice objects; a stale one is silently replaced by the English default
       pickVoice();
-      const en = englishVoice();
-      text.split(NAME_RE).filter(t => t.trim()).forEach(part => {
-        const u = new SpeechSynthesisUtterance(part);
-        const v = NAME_RE.test(part) ? en : voice;
-        if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); } else u.lang = NAME_RE.test(part) ? 'en-US' : 'nl-NL';
-        u.rate = .88; speechSynthesis.speak(u);
-      });
+      const u = new SpeechSynthesisUtterance(text.replace(SOUND_RE, m => SOUND[m]));
+      if (voice) { u.voice = voice; u.lang = voice.lang.replace('_', '-'); } else u.lang = 'nl-NL';
+      u.rate = .88; speechSynthesis.speak(u);
     } catch (e) {}
   };
   // say('Goed zo!', '7') plays each phrase in turn
