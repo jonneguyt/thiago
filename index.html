@@ -527,7 +527,11 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         const focusWords = pool.filter(x => S.focus && x.w.includes(S.focus));
         if (focusWords.length && Math.random() < .4) pool = focusWords;
         const x = pick(pool);
-        const others = shuffle(WORDS.filter(o => o.w !== x.w)).slice(0, 2);
+        // pictures that start with the same letter (then: same end letter), so the first letter alone is not enough
+        const rest = WORDS.filter(o => o.w !== x.w && o.e !== x.e);
+        const sameStart = shuffle(rest.filter(o => o.w[0] === x.w[0]));
+        const sameEnd = shuffle(rest.filter(o => o.w[0] !== x.w[0] && o.w.slice(-1) === x.w.slice(-1)));
+        const others = [...sameStart, ...sameEnd, ...shuffle(rest)].filter((o, i, all) => all.indexOf(o) === i).slice(0, 2);
         const choices = shuffle([x, ...others]);
         return {
           q: 'Welk plaatje hoort bij dit woord?', spoken: ['Lees het woord. Welk plaatje hoort erbij?'],
