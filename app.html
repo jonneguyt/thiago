@@ -113,6 +113,9 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 @keyframes pop { 50% { transform: scale(1.15); } }
 
 /* counting */
+.blocks { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; width: 100%; }
+.block { display: grid; grid-template-columns: repeat(5, auto); gap: 6px; padding: 10px; border-radius: 20px; background: var(--sky); }
+.block .mon { width: clamp(46px, 8vw, 84px); }
 .mon { width: clamp(64px, 11vw, 104px); aspect-ratio: 1; max-width: 100%; position: relative; background: none; padding: 0; transition: transform .15s; }
 .mon img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .mon.counted img { filter: saturate(.3) opacity(.6); }
@@ -345,28 +348,45 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     Leafeon: 'Liefiejon', Glaceon: 'Gleesiejon', Sylveon: 'Silviejon', 'Pokémon': 'Pookeemon', 'Pokébal': 'Pookeebal'
   };
   const SOUND_RE = new RegExp(`(${Object.keys(SOUND).join('|')})`, 'g');
-  const deviceSay = text => {
-    if (!window.speechSynthesis) return;
+  const PAUSE = '|pause|';
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const deviceSay = text => new Promise(done => {
+    if (!window.speechSynthesis) return done();
     try {
       // iPad hands out fresh voice objects; a stale one is silently replaced by the English default
       pickVoice();
       const u = new SpeechSynthesisUtterance(text.replace(SOUND_RE, m => SOUND[m]));
       if (voice) { u.voice = voice; u.lang = voice.lang.replace('_', '-'); } else u.lang = 'nl-NL';
-      u.rate = .88; speechSynthesis.speak(u);
-    } catch (e) {}
-  };
+      u.rate = .88;
+      u.onend = u.onerror = () => done();
+      setTimeout(done, 1500 + text.length * 90);
+      speechSynthesis.speak(u);
+    } catch (e) { done(); }
+  });
   // say('Goed zo!', '7') plays each phrase in turn
+  // say(...) resolves when it has finished speaking (or after a safety timeout, since onend is not always reliable)
   const say = (...parts) => {
-    if (S.mute) return;
+    if (S.mute) return Promise.resolve();
     stopAll();
-    const useClips = S.voiceName === 'builtin' && clips && actx && parts.every(p => clips[p]);
-    // a device voice would read single sounds as letter names ("el"), so those are only shown, not spoken
-    if (!useClips) { if (!voice) pickVoice(); deviceSay(parts.filter(p => !p.startsWith('klank:')).join(' ')); return; }
     const token = playToken;
-    (async () => {
+    const useClips = S.voiceName === 'builtin' && clips && actx && parts.every(p => p === PAUSE || clips[p]);
+    if (!useClips) {
+      if (!voice) pickVoice();
+      // a device voice would read single sounds as letter names ("el"), so those are only shown, not spoken
+      const groups = parts.filter(p => !p.startsWith('klank:')).join(' ').split(PAUSE).map(t => t.trim()).filter(Boolean);
+      return (async () => {
+        for (let i = 0; i < groups.length; i++) {
+          if (token !== playToken) return;
+          if (i) await wait(700);
+          await deviceSay(groups[i]);
+        }
+      })();
+    }
+    return (async () => {
       try {
         if (actx.state !== 'running') await actx.resume();
         for (const p of parts) {
+          if (p === PAUSE) { await wait(700); continue; }
           const buf = await getBuf(p);
           if (token !== playToken) return;
           await new Promise(done => {
@@ -411,12 +431,17 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
           answer: n, choices: numberChoices(n, 1, 20),
           render(stage) {
             stage.innerHTML = '';
+            // rows of five in blocks of ten, like a rekenrek, so he can see 5 and 10 at a glance
+            const blocks = $(`<div class="blocks"></div>`);
+            let block;
             for (let i = 0; i < n; i++) {
+              if (i % 10 === 0) { block = $(`<div class="block"></div>`); blocks.append(block); }
               const b = $(`<button class="mon" aria-label="${name}"><img src="${IMG}${id}.png" alt=""></button>`);
-              b.style.transform = `rotate(${rnd(-12, 12)}deg)`;
+              b.style.transform = `rotate(${rnd(-6, 6)}deg)`;
               b.onclick = () => { if (b.classList.contains('counted')) return; counted++; b.classList.add('counted'); b.append($(`<b>${counted}</b>`)); say(String(counted)); };
-              stage.append(b);
+              block.append(b);
             }
+            stage.append(blocks);
             stage.append($(`<div class="hint">Tik op elke ${name} om mee te tellen.</div>`));
           },
           after: [String(n), name], item: `tel ${n}`
@@ -606,8 +631,11 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         if (streak >= 4 && S.lvl[key] < g.maxLvl) { S.lvl[key]++; streak = 0; save(); paintLvl(); }
         stars++;
         el.querySelectorAll('.stars .ball')[stars - 1].classList.add('on');
-        say(pick(PRAISE), ...cur.after);
-        setTimeout(() => stars >= 5 ? show(catchScreen(key)) : next(), 2200);
+        const shown = Date.now();
+        say(pick(PRAISE), PAUSE, ...cur.after).then(() => setTimeout(() => {
+          if (!el.isConnected) return;
+          stars >= 5 ? show(catchScreen(key)) : next();
+        }, Math.max(600, 2200 - (Date.now() - shown))));
       } else {
         btn.classList.add('wrong');
         logAnswer(key, false, false, cur.item, cur.labels ? cur.labels[c] : c);
