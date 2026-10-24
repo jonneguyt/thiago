@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Boerderij">
+<meta name="theme-color" content="#a8e0ff">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Samuels Boerderij</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+/* Samuels Boerderij: a farm game for a child of about 3. Everything is spoken, nothing needs reading,
+   and there is no way to fail: a wrong tap wobbles and the voice shows the right answer.
+   One bright look on purpose; huge touch targets for small fingers on an iPad. */
+:root {
+  --sky: #a8e0ff;
+  --sky-hi: #e2f6ff;
+  --grass: #84cc5c;
+  --grass-deep: #5fae3e;
+  --paper: #fffdf5;
+  --ink: #2f3b2a;
+  --ink-soft: #5d6b55;
+  --sun: #ffd23f;
+  --barn: #d8452f;
+  --barn-deep: #a8321f;
+  --cream: #fff6e0;
+  --shadow: rgba(40, 60, 30, .22);
+  --ok: #43a047;
+  --try: #f9a825;
+  --ui: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  margin: 0; overflow: hidden; color: var(--ink); font-family: var(--ui);
+  background: linear-gradient(var(--sky-hi), var(--sky) 50%, var(--grass) 50%, var(--grass-deep));
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; padding: 0; touch-action: manipulation; }
+button:focus-visible { outline: 4px solid var(--barn); outline-offset: 3px; }
+#app { height: 100dvh; height: 100vh; height: 100dvh; }
+.screen {
+  height: 100%; display: flex; flex-direction: column;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  gap: 12px;
+}
+.emo { font-family: var(--emoji); line-height: 1; display: inline-block; }
+
+/* top bar */
+.bar { display: flex; align-items: center; gap: 12px; min-height: 76px; position: relative; z-index: 3; }
+.space { flex: 1; }
+.round {
+  width: 76px; height: 76px; border-radius: 50%; background: var(--paper); font-size: 40px;
+  display: grid; place-items: center; box-shadow: 0 5px 0 var(--shadow); flex: none;
+}
+.round:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--shadow); }
+.title { font-weight: 700; font-size: 22px; color: var(--ink); background: rgba(255,255,255,.7); padding: 8px 16px; border-radius: 999px; }
+.eggs { display: flex; gap: 10px; }
+.egg { width: 30px; height: 38px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: rgba(255,255,255,.55); border: 3px solid rgba(255,255,255,.9); transition: background .3s, transform .3s; }
+.egg.on { background: var(--sun); border-color: #e0a800; transform: scale(1.15); }
+.lock { width: 54px; height: 54px; border-radius: 50%; background: rgba(255,255,255,.55); position: relative; display: grid; place-items: center; font-size: 22px; flex: none; }
+.lock svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.lock circle { fill: none; stroke: var(--barn); stroke-width: 3; stroke-dasharray: 100.6; stroke-dashoffset: 100.6; }
+.lock.hold circle { stroke-dashoffset: 0; transition: stroke-dashoffset 3s linear; }
+.lock-tip { position: absolute; right: 0; top: 62px; white-space: nowrap; background: var(--paper); padding: 6px 12px; border-radius: 12px; font-size: 15px; box-shadow: 0 3px 0 var(--shadow); opacity: 0; transition: opacity .2s; pointer-events: none; }
+.lock-tip.show { opacity: 1; }
+
+/* start */
+.start { align-items: center; justify-content: center; text-align: center; }
+.play {
+  width: min(300px, 62vw); aspect-ratio: 1; border-radius: 50%; background: var(--paper);
+  box-shadow: 0 10px 0 var(--shadow), 0 0 0 14px rgba(255,255,255,.45); display: grid; place-items: center;
+  font-size: min(170px, 34vw); animation: breathe 2.4s ease-in-out infinite;
+}
+.play:active { transform: translateY(6px); }
+.start p { font-size: 26px; font-weight: 600; margin: 34px 0 0; color: var(--ink); background: rgba(255,255,255,.7); padding: 8px 20px; border-radius: 999px; }
+
+/* home farm */
+.farm { flex: 1; position: relative; min-height: 0; }
+.sun { position: absolute; right: 4%; top: 0; width: min(110px, 16vmin); aspect-ratio: 1; border-radius: 50%; background: var(--sun);
+  box-shadow: 0 0 0 12px rgba(255,210,63,.35), 0 0 0 26px rgba(255,210,63,.18); }
+.cloud { position: absolute; width: 130px; height: 44px; background: #fff; border-radius: 40px; opacity: .9; animation: drift 38s linear infinite; }
+.cloud::before, .cloud::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+.cloud::before { width: 60px; height: 60px; left: 20px; top: -28px; }
+.cloud::after { width: 44px; height: 44px; left: 66px; top: -18px; }
+.cloud.c1 { top: 4%; left: 18%; }
+.cloud.c2 { top: 14%; left: 55%; transform: scale(.75); animation-duration: 52s; animation-delay: -20s; }
+.barn { position: absolute; left: 2%; bottom: 36%; width: min(26%, 260px); }
+.barn svg { width: 100%; display: block; filter: drop-shadow(0 6px 0 var(--shadow)); }
+.fence { position: absolute; left: 0; right: 0; bottom: 34%; height: 34px;
+  background: linear-gradient(transparent 8px, #e9d3a6 8px, #e9d3a6 13px, transparent 13px, transparent 22px, #e9d3a6 22px, #e9d3a6 27px, transparent 27px),
+              repeating-linear-gradient(90deg, transparent 0 34px, #e9d3a6 34px 44px); opacity: .9; }
+.animal { position: absolute; transform: translate(-50%, -100%); font-size: var(--s); filter: drop-shadow(0 5px 0 rgba(0,0,0,.15)); }
+.animal .emo { animation: bob 3s ease-in-out infinite; animation-delay: var(--d); }
+.animal.hop .emo { animation: hop .6s ease; }
+.games { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(10px, 2vw, 20px); position: relative; z-index: 2; }
+.gbtn {
+  width: clamp(96px, 17vw, 160px); aspect-ratio: 1; border-radius: 30px; background: var(--c);
+  box-shadow: 0 7px 0 var(--shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  border: 5px solid rgba(255,255,255,.85);
+}
+.gbtn:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--shadow); }
+.gbtn .icon { height: 62%; display: grid; place-items: center; font-size: clamp(44px, 8vw, 78px); }
+.gbtn .icon svg { height: 100%; width: auto; }
+.gbtn small { font-size: clamp(12px, 1.6vw, 16px); font-weight: 600; color: rgba(0,0,0,.6); }
+
+/* game stage */
+.game .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; }
+.choices { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: clamp(16px, 4vw, 48px); }
+.choice {
+  width: clamp(140px, 27vw, 270px); aspect-ratio: 1; border-radius: 36px; background: var(--paper);
+  box-shadow: 0 9px 0 var(--shadow); display: flex; align-items: center; justify-content: center;
+  font-size: clamp(90px, 17vw, 180px); position: relative;
+}
+.choice:active { transform: translateY(5px); box-shadow: 0 3px 0 var(--shadow); }
+.choice svg { width: 78%; height: 78%; }
+.choice.small .emo { font-size: .38em; align-self: flex-end; margin-bottom: 14%; }
+.choice.big .emo { font-size: 1.05em; }
+.prompt-pic { position: absolute; top: 0; left: 50%; transform: translateX(-50%); }
+
+/* feedback */
+.wobble { animation: wobble .5s ease; }
+.yay { animation: yay .7s ease; background: #fff4c2; }
+.pulse { animation: pulse 1.1s ease-in-out infinite; }
+.spark { position: fixed; pointer-events: none; font-size: 34px; z-index: 50; animation: spark .9s ease-out forwards; font-family: var(--emoji); }
+.confetti { position: fixed; top: -20px; width: 14px; height: 20px; border-radius: 4px; z-index: 50; pointer-events: none; animation: fall linear forwards; }
+
+/* shape sorter */
+.sorter { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: space-around; }
+.holes { display: flex; gap: clamp(14px, 4vw, 44px); padding: clamp(14px, 3vw, 28px); background: #c98a4a; border-radius: 36px; box-shadow: 0 9px 0 #8a5a2b, inset 0 4px 0 rgba(255,255,255,.25); }
+.hole { width: clamp(110px, 20vw, 190px); aspect-ratio: 1; display: grid; place-items: center; border-radius: 24px; }
+.hole svg, .piece svg { width: 100%; height: 100%; overflow: visible; }
+.hole .shape { fill: #6b4220; stroke: #4e2f15; stroke-width: 4; }
+.hole.filled .shape { fill: var(--f); stroke: rgba(0,0,0,.25); }
+.tray { height: clamp(130px, 24vw, 210px); display: grid; place-items: center; }
+.piece { width: clamp(110px, 20vw, 190px); aspect-ratio: 1; touch-action: none; position: relative; z-index: 5; filter: drop-shadow(0 8px 0 rgba(0,0,0,.2)); }
+.piece .shape { stroke: rgba(0,0,0,.25); stroke-width: 4; }
+.piece.home { transition: transform .45s cubic-bezier(.3,1.4,.6,1); }
+.piece.snap { transition: transform .3s ease-in; }
+.piece.gone { display: none; }
+
+/* counting */
+.counter { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(14px, 3vw, 34px); max-width: 1000px; }
+.cnt { width: clamp(120px, 20vw, 200px); aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.6); font-size: clamp(76px, 13vw, 130px); display: grid; place-items: center; position: relative; box-shadow: 0 7px 0 var(--shadow); }
+.cnt.done { background: var(--paper); }
+.cnt .num { position: absolute; top: -10px; right: -6px; width: 56px; height: 56px; border-radius: 50%; background: var(--sun); font-size: 34px; font-weight: 700; display: grid; place-items: center; border: 4px solid #fff; box-shadow: 0 3px 0 var(--shadow); font-family: var(--ui); }
+
+/* reward */
+.reward .stage { flex-direction: column; gap: 10px; }
+.bigbarn { width: min(340px, 52vw, 40vh); position: relative; }
+.bigbarn svg { width: 100%; display: block; filter: drop-shadow(0 8px 0 var(--shadow)); }
+.door { transform-box: fill-box; transition: transform .7s ease; }
+.door.l { transform-origin: left center; }
+.door.r { transform-origin: right center; }
+.open .door { transform: scaleX(.12); }
+.newbie { position: absolute; left: 50%; bottom: 4%; font-size: min(150px, 22vw, 18vh); transform: translateX(-50%) scale(0); transition: transform .8s cubic-bezier(.3,1.6,.5,1); }
+.newbie.out { transform: translateX(-50%) translateY(62%) scale(1); }
+.party { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; font-size: clamp(44px, 8vw, 80px); max-width: 900px; }
+.party .emo { animation: dance .8s ease-in-out infinite alternate; animation-delay: var(--d); }
+.after { display: flex; gap: 28px; margin-top: min(90px, 12vh); }
+.after .round { width: 110px; height: 110px; font-size: 58px; }
+
+/* parents */
+.parents { overflow-y: auto; -webkit-overflow-scrolling: touch; background: #f5f1e6; -webkit-user-select: text; user-select: text; display: block; }
+.parents .wrap { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: 40px; }
+.parents h1 { font-size: 28px; margin: 6px 0 0; }
+.parents h2 { font-size: 20px; margin: 0 0 10px; }
+.card { background: #fff; border-radius: 18px; padding: 16px 18px; box-shadow: 0 2px 0 rgba(0,0,0,.08); font-size: 17px; line-height: 1.45; }
+.card p { margin: 6px 0; }
+.muted { color: var(--ink-soft); font-size: 15px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #eee; font-size: 15px; border: 2px solid transparent; }
+.chip.ok { background: #e3f4e1; border-color: var(--ok); }
+.chip.try { background: #fff5d6; border-color: var(--try); }
+.chip .emo { font-size: 20px; }
+.chip .dot { width: 16px; height: 16px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.2); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; }
+.row > span:first-child { min-width: 150px; font-weight: 600; }
+.seg { display: inline-flex; background: #eee; border-radius: 12px; padding: 3px; }
+.seg button { padding: 8px 16px; border-radius: 10px; font-size: 16px; }
+.seg button.on { background: var(--barn); color: #fff; }
+.btn { background: var(--barn); color: #fff; padding: 10px 18px; border-radius: 12px; font-size: 16px; font-weight: 600; }
+.btn.soft { background: #e8e2d2; color: var(--ink); }
+select { font: inherit; font-size: 16px; padding: 8px; border-radius: 10px; border: 2px solid #ddd; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eee; }
+
+@keyframes breathe { 50% { transform: scale(1.05); } }
+@keyframes drift { from { translate: -30vw 0; } to { translate: 110vw 0; } }
+@keyframes bob { 50% { transform: translateY(-6%); } }
+@keyframes hop { 30% { transform: translateY(-40%) scale(1.1); } 60% { transform: translateY(0) scale(.95, 1.05); } }
+@keyframes wobble { 20% { transform: rotate(-7deg); } 40% { transform: rotate(6deg); } 60% { transform: rotate(-4deg); } 80% { transform: rotate(2deg); } }
+@keyframes yay { 30% { transform: scale(1.12) rotate(-3deg); } 60% { transform: scale(.97); } }
+@keyframes pulse { 50% { box-shadow: 0 9px 0 var(--shadow), 0 0 0 14px rgba(255, 210, 63, .9); transform: scale(1.05); } }
+@keyframes spark { to { transform: translate(var(--x), var(--y)) scale(.4) rotate(160deg); opacity: 0; } }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+@keyframes dance { from { transform: translateY(0) rotate(-8deg); } to { transform: translateY(-18%) rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) { .cloud, .animal .emo, .play { animation: none; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(() => {
+  'use strict';
+  const KEY = 'samuel-boerderij-v1';
+  const app = document.getElementById('app');
+  const $ = html => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  const today = (d = new Date()) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  // ---------- content ----------
+  // The farm fills up in this order: one new animal after every finished round.
+  const ANIMALS = [
+    { id: 'koe', e: '🐮', art: 'de', noun: 'koe', sound: 'boe' },
+    { id: 'kip', e: '🐔', art: 'de', noun: 'kip', sound: 'tok tok tok' },
+    { id: 'varken', e: '🐷', art: 'het', noun: 'varken', sound: 'knor knor' },
+    { id: 'schaap', e: '🐑', art: 'het', noun: 'schaap', sound: 'bèèh' },
+    { id: 'eend', e: '🦆', art: 'de', noun: 'eend', sound: 'kwak kwak' },
+    { id: 'paard', e: '🐴', art: 'het', noun: 'paard', sound: 'hiehiehie' },
+    { id: 'poes', e: '🐱', art: 'de', noun: 'poes', sound: 'miauw' },
+    { id: 'hond', e: '🐶', art: 'de', noun: 'hond', sound: 'woef woef' },
+    { id: 'geit', e: '🐐', art: 'de', noun: 'geit', sound: 'mèèh' },
+    { id: 'haan', e: '🐓', art: 'de', noun: 'haan', sound: 'kukeleku' },
+    { id: 'muis', e: '🐭', art: 'de', noun: 'muis', sound: 'piep piep' },
+    { id: 'kikker', e: '🐸', art: 'de', noun: 'kikker', sound: 'kwaak kwaak' },
+    { id: 'uil', e: '🦉', art: 'de', noun: 'uil', sound: 'oehoe' },
+    { id: 'konijn', e: '🐰', art: 'het', noun: 'konijn', sound: 'snuf snuf', quiet: true },
+  ];
+  const name = a => a.art + ' ' + a.noun;
+  const COLORS = [
+    { id: 'rood', adj: 'rode', hex: '#e53935' },
+    { id: 'blauw', adj: 'blauwe', hex: '#1e88e5' },
+    { id: 'geel', adj: 'gele', hex: '#fdd835' },
+    { id: 'groen', adj: 'groene', hex: '#43a047' },
+    { id: 'oranje', adj: 'oranje', hex: '#fb8c00', more: true },
+    { id: 'paars', adj: 'paarse', hex: '#8e24aa', more: true },
+    { id: 'roze', adj: 'roze', hex: '#f48fb1', more: true },
+  ];
+  const starPts = (() => { const p = []; for (let i = 0; i < 10; i++) { const r = i % 2 ? 20 : 46, a = Math.PI / 5 * i - Math.PI / 2; p.push((50 + r * Math.cos(a)).toFixed(1) + ',' + (53 + r * Math.sin(a)).toFixed(1)); } return p.join(' '); })();
+  const SHAPES = [
+    { id: 'rondje', art: 'het', noun: 'rondje', hex: '#e53935', svg: '<circle class="shape" cx="50" cy="50" r="42"/>' },
+    { id: 'vierkant', art: 'het', noun: 'vierkant', hex: '#1e88e5', svg: '<rect class="shape" x="10" y="10" width="80" height="80" rx="6"/>' },
+    { id: 'driehoek', art: 'de', noun: 'driehoek', hex: '#fdd835', svg: '<polygon class="shape" points="50,7 95,89 5,89" stroke-linejoin="round"/>' },
+    { id: 'ster', art: 'de', noun: 'ster', hex: '#fb8c00', more: true, svg: `<polygon class="shape" points="${starPts}" stroke-linejoin="round"/>` },
+    { id: 'hartje', art: 'het', noun: 'hartje', hex: '#f06292', more: true, svg: '<path class="shape" d="M50 90 C22 70 5 52 5 32 C5 16 17 7 30 7 C40 7 47 13 50 21 C53 13 60 7 70 7 C83 7 95 16 95 32 C95 52 78 70 50 90 Z"/>' },
+  ];
+  const shapeSvg = (s, fill) => `<svg viewBox="0 0 100 100" style="--f:${s.hex}">${fill ? s.svg.replace('class="shape"', `class="shape" fill="${s.hex}"`) : s.svg}</svg>`;
+  const COUNT = [
+    { e: '🍎', art: 'de', one: 'appel', many: 'appels' },
+    { e: '🥚', art: 'het', one: 'ei', many: 'eieren' },
+    { e: '🥕', art: 'de', one: 'wortel', many: 'wortels' },
+    { e: '🐥', art: 'het', one: 'kuikentje', many: 'kuikentjes' },
+    { e: '🌻', art: 'de', one: 'bloem', many: 'bloemen' },
+    { e: '🐟', art: 'het', one: 'visje', many: 'visjes' },
+  ];
+  const NUM = ['nul', 'één', 'twee', 'drie', 'vier', 'vijf'];
+  const PRAISE = ['Goed zo!', 'Super!', 'Knap hoor!', 'Ja!', 'Hoera!', 'Wauw!'];
+
+  // ---------- saved state (on this device only) ----------
+  const freshSet = () => ({ choices: 2, countTo: 3, moreColors: false, moreShapes: false, voice: '', rate: 0.85, mute: false });
+  const fresh = () => ({ farm: ['koe'], set: freshSet(), stats: {}, days: {} });
+  let S = fresh();
+  try { const raw = localStorage.getItem(KEY); if (raw) { const j = JSON.parse(raw); S = Object.assign(fresh(), j); S.set = Object.assign(freshSet(), j.set || {}); } } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  const dayLog = () => S.days[today()] || (S.days[today()] = { rounds: {}, ok: 0, help: 0 });
+  // key is e.g. 'dier:koe', 'kleur:rood', 'maat:klein', 'vorm:ster', 'tel:3'; firstTry false means he needed the hint
+  const record = (key, firstTry) => {
+    const s = S.stats[key] || (S.stats[key] = { ok: 0, help: 0, last: [] });
+    if (firstTry) s.ok++; else s.help++;
+    s.last.push(firstTry ? 1 : 0); if (s.last.length > 5) s.last.shift();
+    const d = dayLog(); if (firstTry) d.ok++; else d.help++;
+    save();
+  };
+  const status = key => {
+    const s = S.stats[key]; if (!s) return '';
+    return s.ok >= 3 && s.last.slice(-3).reduce((a, b) => a + b, 0) >= 2 ? 'ok' : 'try';
+  };
+
+  // ---------- speech: the iPad's own Dutch voice ----------
+  let voices = [];
+  const loadVoices = () => { if (window.speechSynthesis) voices = speechSynthesis.getVoices().filter(v => /^nl([-_]|$)/i.test(v.lang || '')); };
+  if (window.speechSynthesis) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+  const rank = v => (/enhanced|verbeterd|premium/i.test(v.name) ? 0 : 2) + (/xander|claire/i.test(v.name) ? 0 : 1) + (/nl[-_]NL/i.test(v.lang) ? 0 : 1);
+  const bestVoice = () => voices.find(v => v.voiceURI === S.set.voice) || voices.slice().sort((a, b) => rank(a) - rank(b))[0] || null;
+  // say(text) stops whatever was being said and resolves when this sentence is done
+  const say = text => new Promise(done => {
+    if (S.set.mute || !window.speechSynthesis) return done();
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const v = bestVoice();
+      if (v) { u.voice = v; u.lang = v.lang.replace('_', '-'); } else u.lang = 'nl-NL';
+      u.rate = S.set.rate; u.pitch = 1.1;
+      let fin = false; const end = () => { if (!fin) { fin = true; done(); } };
+      u.onend = u.onerror = end;
+      speechSynthesis.speak(u);
+      setTimeout(end, 1400 + text.length * 95 / S.set.rate);
+    } catch (e) { done(); }
+  });
+
+  // ---------- little sounds ----------
+  let actx = null;
+  const audio = () => { try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state !== 'running') actx.resume(); } catch (e) {} return actx; };
+  const tone = (freqs, dur = .12, type = 'sine', vol = .14) => {
+    const a = audio(); if (!a || S.set.mute) return;
+    let t = a.currentTime + .01;
+    for (const f of freqs) {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + .03); t += dur * .8;
+    }
+  };
+  const sfx = {
+    yes: () => tone([523, 659, 784], .14, 'triangle'),
+    pop: () => tone([700], .07, 'sine', .1),
+    soft: () => tone([330, 294], .12, 'sine', .06),
+    fanfare: () => tone([523, 659, 784, 1047, 784, 1047], .17, 'triangle', .16),
+  };
+  document.addEventListener('pointerdown', audio, true);
+
+  // ---------- effects ----------
+  const sparks = el => {
+    const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    for (let i = 0; i < 9; i++) {
+      const s = document.createElement('span'); s.className = 'spark'; s.textContent = pick(['⭐', '✨', '🌟']);
+      const a = Math.PI * 2 * i / 9, d = 110 + Math.random() * 60;
+      s.style.left = cx - 17 + 'px'; s.style.top = cy - 17 + 'px';
+      s.style.setProperty('--x', Math.cos(a) * d + 'px'); s.style.setProperty('--y', Math.sin(a) * d + 'px');
+      document.body.append(s); setTimeout(() => s.remove(), 1000);
+    }
+  };
+  const confetti = () => {
+    const cols = ['#e53935', '#1e88e5', '#fdd835', '#43a047', '#fb8c00', '#8e24aa', '#f48fb1'];
+    for (let i = 0; i < 60; i++) {
+      const c = document.createElement('span'); c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw'; c.style.background = pick(cols);
+      c.style.animationDuration = 2 + Math.random() * 2 + 's'; c.style.animationDelay = Math.random() * .8 + 's';
+      document.body.append(c); setTimeout(() => c.remove(), 5000);
+    }
+  };
+  const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+
+  // ---------- screens ----------
+  let screenSeq = 0;
+  const show = el => { screenSeq++; if (window.speechSynthesis) speechSynthesis.cancel(); app.replaceChildren(el); return screenSeq; };
+  const alive = sid => sid === screenSeq;
+  const BARN = `<svg viewBox="0 0 200 190" aria-hidden="true">
+    <polygon points="100,6 198,76 2,76" fill="${'#a8321f'}"/>
+    <rect x="20" y="70" width="160" height="117" fill="#d8452f"/>
+    <polygon points="100,20 180,76 20,76" fill="#d8452f"/>
+    <circle cx="100" cy="54" r="13" fill="#fff6e0"/>
+    <rect x="58" y="103" width="84" height="84" fill="#fff6e0"/>
+    <rect x="63" y="108" width="74" height="79" fill="#4a2414"/>
+    <g class="door l"><rect x="63" y="108" width="37" height="79" fill="#a8321f"/><path d="M63 108 L100 187 M100 108 L63 187" stroke="#fff6e0" stroke-width="5"/></g>
+    <g class="door r"><rect x="100" y="108" width="37" height="79" fill="#a8321f"/><path d="M100 108 L137 187 M137 108 L100 187" stroke="#fff6e0" stroke-width="5"/></g>
+  </svg>`;
+  const SLOTS = [[34, 76], [55, 82], [74, 75], [44, 95], [64, 96], [86, 88], [16, 92], [92, 76], [52, 74], [30, 88], [80, 98], [24, 80], [70, 86], [42, 80]];
+
+  const lockButton = () => {
+    const b = $(`<button class="lock" aria-label="Ouders: houd 3 tellen vast"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="16"/></svg><span class="emo">🔒</span><span class="lock-tip">Ouders: 3 tellen vasthouden</span></button>`);
+    let t = null;
+    const stop = () => { clearTimeout(t); b.classList.remove('hold'); };
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault(); b.classList.add('hold');
+      const tip = b.querySelector('.lock-tip'); tip.classList.add('show'); setTimeout(() => tip.classList.remove('show'), 2500);
+      t = setTimeout(() => { stop(); parents(); }, 3000);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+    b.addEventListener('contextmenu', e => e.preventDefault());
+    return b;
+  };
+
+  function start() {
+    const el = $(`<div class="screen start"><button class="play" aria-label="Spelen"><span class="emo">🐮</span></button><p>Tik om te spelen</p></div>`);
+    el.querySelector('.play').addEventListener('click', () => {
+      audio(); loadVoices();
+      home(); say('Hoi Samuel! Welkom op de boerderij!');
+    });
+    show(el);
+  }
+
+  const GAMES = [
+    { id: 'geluid', label: 'Wie zegt dat?', c: '#ffcc80', icon: '<span class="emo">🐮</span>', intro: 'Wie zegt dat? Luister goed!', task: taskSound },
+    { id: 'kleur', label: 'Kleuren', c: '#b3e5fc', icon: '<svg viewBox="0 0 100 100"><circle cx="30" cy="38" r="20" fill="#e53935"/><circle cx="70" cy="38" r="20" fill="#1e88e5"/><circle cx="50" cy="72" r="20" fill="#fdd835"/></svg>', intro: 'We gaan kleuren zoeken!', task: taskColor },
+    { id: 'maat', label: 'Groot en klein', c: '#c5e1a5', icon: '<span class="emo">🐔</span><span class="emo" style="font-size:.45em">🐔</span>', intro: 'Groot en klein!', task: taskSize },
+    { id: 'vorm', label: 'Vormen', c: '#f8bbd0', icon: '<svg viewBox="0 0 100 100"><circle cx="28" cy="32" r="18" fill="#e53935"/><rect x="56" y="14" width="34" height="34" rx="4" fill="#1e88e5"/><polygon points="50,52 76,92 24,92" fill="#fdd835"/></svg>', intro: 'Waar past hij? Schuif de vorm in het gat!', task: taskShape },
+    { id: 'tel', label: 'Tellen', c: '#fff59d', icon: '<span class="emo">🍎</span>', intro: 'We gaan tellen!', task: taskCount, n: 3 },
+  ];
+
+  function home() {
+    const el = $(`<div class="screen home">
+      <div class="bar"><div class="title">Samuels boerderij</div><div class="space"></div></div>
+      <div class="farm"><div class="sun"></div><div class="cloud c1"></div><div class="cloud c2"></div><div class="fence"></div><div class="barn">${BARN}</div></div>
+      <div class="games"></div></div>`);
+    el.querySelector('.bar').append(lockButton());
+    const farm = el.querySelector('.farm');
+    S.farm.forEach((id, i) => {
+      const a = ANIMALS.find(x => x.id === id); if (!a) return;
+      const [x, y] = SLOTS[i % SLOTS.length];
+      const b = $(`<button class="animal" aria-label="${a.noun}" style="left:${x}%;top:${y}%;--s:calc(min(11vw, 13vh) * ${(.75 + (y - 74) / 80).toFixed(2)});--d:-${(i * .7).toFixed(1)}s"><span class="emo">${a.e}</span></button>`);
+      b.addEventListener('click', () => { replay(b, 'hop'); sfx.pop(); say(`${cap(name(a))} zegt ${a.sound}!`); });
+      farm.append(b);
+    });
+    const games = el.querySelector('.games');
+    for (const g of GAMES) {
+      const b = $(`<button class="gbtn" style="--c:${g.c}" aria-label="${g.label}"><span class="icon">${g.icon}</span><small>${g.label}</small></button>`);
+      b.addEventListener('click', () => { sfx.pop(); play(g); });
+      games.append(b);
+    }
+    show(el);
+  }
+
+  // A round: a few short tasks, each egg lights up, then a new animal for the farm.
+  async function play(g) {
+    const total = g.n || 4;
+    const el = $(`<div class="screen game">
+      <div class="bar"><button class="round home" aria-label="Naar de boerderij"><span class="emo">🏠</span></button><div class="space"></div>
+      <div class="eggs">${'<span class="egg"></span>'.repeat(total)}</div><div class="space"></div>
+      <button class="round again" aria-label="Nog eens zeggen"><span class="emo">🔊</span></button></div>
+      <div class="stage"></div></div>`);
+    const view = { stage: el.querySelector('.stage'), prompt: '' };
+    el.querySelector('.home').addEventListener('click', () => { sfx.pop(); home(); });
+    el.querySelector('.again').addEventListener('click', () => { if (view.prompt) say(view.prompt); });
+    const sid = show(el);
+    const eggs = el.querySelectorAll('.egg');
+    await say(g.intro);
+    let last = null;
+    for (let i = 0; i < total; i++) {
+      if (!alive(sid)) return;
+      last = await g.task(view, sid, last);
+      if (!alive(sid)) return;
+      eggs[i].classList.add('on');
+      await sleep(450);
+    }
+    const d = dayLog(); d.rounds[g.id] = (d.rounds[g.id] || 0) + 1; save();
+    reward(g);
+  }
+
+  // Repeat the question once if he has not tapped anything for a while.
+  const nudge = (sid, isDone, text, hintEl) => setTimeout(() => {
+    if (alive(sid) && !isDone()) { say(text); if (hintEl) hintEl.classList.add('pulse'); }
+  }, 12000);
+
+  // Pick-one task. items: [{html, cls, correct, hint}]; resolves once the right one is tapped.
+  function choose(view, sid, { items, prompt, right, key }) {
+    return new Promise(resolve => {
+      const wrap = $('<div class="choices"></div>');
+      let first = true, done = false, rightBtn = null;
+      for (const it of items) {
+        const b = $(`<button class="choice ${it.cls || ''}">${it.html}</button>`);
+        if (it.correct) rightBtn = b;
+        b.addEventListener('click', async () => {
+          if (done) return;
+          if (it.correct) {
+            done = true; record(key, first); b.classList.remove('pulse'); replay(b, 'yay'); sfx.yes(); sparks(b);
+            await say(right); await sleep(200);
+            if (alive(sid)) resolve(key);
+          } else {
+            first = false; replay(b, 'wobble'); sfx.soft();
+            rightBtn.classList.add('pulse'); say(it.hint);
+          }
+        });
+        wrap.append(b);
+      }
+      view.stage.replaceChildren(wrap); view.prompt = prompt;
+      say(prompt); nudge(sid, () => done, prompt, rightBtn);
+    });
+  }
+  const choiceCount = () => S.set.choices;
+  const pickTarget = (opts, last, keyOf) => pick(opts.filter(o => keyOf(o) !== last).length ? opts.filter(o => keyOf(o) !== last) : opts);
+
+  function taskSound(view, sid, last) {
+    const pool = ANIMALS.filter(a => !a.quiet);
+    const t = pickTarget(pool, last, a => 'dier:' + a.id);
+    const opts = shuffle([t, ...shuffle(pool.filter(a => a !== t)).slice(0, choiceCount() - 1)]);
+    return choose(view, sid, {
+      key: 'dier:' + t.id,
+      prompt: `Wie zegt ${t.sound}?`,
+      right: `Ja! ${cap(name(t))} zegt ${t.sound}!`,
+      items: opts.map(a => ({ html: `<span class="emo">${a.e}</span>`, correct: a === t,
+        hint: `Dat is ${name(a)}. ${cap(name(a))} zegt ${a.sound}. Wie zegt ${t.sound}?` })),
+    });
+  }
+
+  const ball = hex => `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="${hex}" stroke="rgba(0,0,0,.15)" stroke-width="3"/><ellipse cx="34" cy="32" rx="13" ry="8" fill="#fff" opacity=".5" transform="rotate(-35 34 32)"/></svg>`;
+  const balloon = hex => `<svg viewBox="0 0 100 130"><path d="M50 98 Q46 112 54 126" stroke="#777" stroke-width="2.5" fill="none"/><ellipse cx="50" cy="48" rx="36" ry="44" fill="${hex}" stroke="rgba(0,0,0,.15)" stroke-width="3"/><polygon points="44,98 56,98 50,90" fill="${hex}"/><ellipse cx="36" cy="30" rx="9" ry="14" fill="#fff" opacity=".45" transform="rotate(25 36 30)"/></svg>`;
+  function taskColor(view, sid, last) {
+    const pool = COLORS.filter(c => S.set.moreColors || !c.more);
+    const t = pickTarget(pool, last, c => 'kleur:' + c.id);
+    const opts = shuffle([t, ...shuffle(pool.filter(c => c !== t)).slice(0, choiceCount() - 1)]);
+    const isBall = Math.random() < .6, thing = isBall ? 'bal' : 'ballon', draw = isBall ? ball : balloon;
+    return choose(view, sid, {
+      key: 'kleur:' + t.id,
+      prompt: `Waar is de ${t.adj} ${thing}?`,
+      right: `Ja! Dat is ${t.id}!`,
+      items: opts.map(c => ({ html: draw(c.hex), correct: c === t, hint: `Dat is ${c.id}. Waar is ${t.id}?` })),
+    });
+  }
+
+  function taskSize(view, sid, last) {
+    const a = pick(ANIMALS);
+    const wantBig = last === 'maat:groot' ? Math.random() < .35 : last === 'maat:klein' ? Math.random() < .65 : Math.random() < .5;
+    const adj = wantBig ? 'grote' : 'kleine';
+    const items = shuffle([true, false]).map(big => ({
+      html: `<span class="emo">${a.e}</span>`, cls: big ? 'big' : 'small', correct: big === wantBig,
+      hint: `Die is ${big ? 'groot' : 'klein'}. Waar is ${a.art} ${adj} ${a.noun}?`,
+    }));
+    return choose(view, sid, {
+      key: 'maat:' + (wantBig ? 'groot' : 'klein'),
+      prompt: `Waar is ${a.art} ${adj} ${a.noun}?`,
+      right: `Ja! Dat is ${a.art} ${adj} ${a.noun}!`,
+      items,
+    });
+  }
+
+  // Shape sorter: drag the piece into the matching hole; tapping the right hole works too.
+  function taskShape(view, sid, last) {
+    return new Promise(resolve => {
+      const pool = SHAPES.filter(s => S.set.moreShapes || !s.more);
+      const t = pickTarget(pool, last, s => 'vorm:' + s.id);
+      const n = Math.min(pool.length, choiceCount() + 1);
+      const opts = shuffle([t, ...shuffle(pool.filter(s => s !== t)).slice(0, n - 1)]);
+      const key = 'vorm:' + t.id, what = `${t.art} ${t.noun}`;
+      const prompt = `Waar past ${what}?`;
+      const el = $(`<div class="sorter"><div class="holes"></div><div class="tray"><div class="piece home">${shapeSvg(t, true)}</div></div></div>`);
+      const holesEl = el.querySelector('.holes'), piece = el.querySelector('.piece');
+      let first = true, done = false, rightHole = null;
+      const holes = opts.map(s => {
+        const h = $(`<button class="hole" aria-label="${s.noun}">${shapeSvg(s, false)}</button>`);
+        h.dataset.id = s.id; if (s === t) rightHole = h;
+        h.addEventListener('click', () => { if (!done && !dragged) drop(h); });
+        holesEl.append(h); return h;
+      });
+      view.stage.replaceChildren(el); view.prompt = prompt;
+
+      let dx = 0, dy = 0, sx = 0, sy = 0, dragging = false, dragged = false;
+      const setPos = () => { piece.style.transform = `translate(${dx}px, ${dy}px)`; };
+      const goHome = () => { piece.classList.add('home'); dx = dy = 0; setPos(); };
+      const success = async () => {
+        done = true; record(key, first); rightHole.classList.remove('pulse');
+        const pr = piece.getBoundingClientRect(), hr = rightHole.getBoundingClientRect();
+        dx += hr.left + hr.width / 2 - (pr.left + pr.width / 2); dy += hr.top + hr.height / 2 - (pr.top + pr.height / 2);
+        piece.classList.remove('home'); piece.classList.add('snap'); setPos();
+        await sleep(320);
+        piece.classList.add('gone'); rightHole.classList.add('filled'); replay(rightHole, 'yay'); sfx.yes(); sparks(rightHole);
+        await say(`Ja! ${cap(what)} past!`); await sleep(200);
+        if (alive(sid)) resolve(key);
+      };
+      const drop = h => {
+        if (h === rightHole) return success();
+        first = false; replay(h, 'wobble'); sfx.soft(); goHome(); rightHole.classList.add('pulse');
+        const s = SHAPES.find(x => x.id === h.dataset.id);
+        say(`Dat is ${s.art} ${s.noun}. Waar past ${what}?`);
+      };
+      piece.addEventListener('pointerdown', e => {
+        if (done) return;
+        dragging = true; dragged = false; piece.setPointerCapture(e.pointerId); piece.classList.remove('home');
+        sx = e.clientX - dx; sy = e.clientY - dy;
+      });
+      piece.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        dx = e.clientX - sx; dy = e.clientY - sy; if (Math.abs(dx) + Math.abs(dy) > 12) dragged = true; setPos();
+      });
+      const end = () => {
+        if (!dragging) return; dragging = false;
+        if (!dragged) { goHome(); say(prompt); rightHole.classList.add('pulse'); return; }
+        const pr = piece.getBoundingClientRect(), cx = pr.left + pr.width / 2, cy = pr.top + pr.height / 2;
+        // generous: drop anywhere near a hole counts for that hole
+        let best = null, bestD = Infinity;
+        for (const h of holes) { const r = h.getBoundingClientRect(), d = Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy); if (d < bestD) { bestD = d; best = h; } }
+        const reach = best ? best.getBoundingClientRect().width * .85 : 0;
+        if (best && bestD < reach) drop(best); else goHome();
+        setTimeout(() => { dragged = false; }, 50);
+      };
+      piece.addEventListener('pointerup', end);
+      piece.addEventListener('pointercancel', () => { dragging = false; goHome(); });
+
+      say(prompt); nudge(sid, () => done, prompt, rightHole);
+    });
+  }
+
+  // Counting along: tap every item, the voice counts. Nothing can go wrong here.
+  function taskCount(view, sid, last) {
+    return new Promise(resolve => {
+      const it = pick(COUNT);
+      const opts = S.set.countTo >= 5 ? [2, 3, 4, 5, 3, 4] : [1, 2, 3, 3, 2, 3];
+      let n = pick(opts); if ('tel:' + n === last) n = pick(opts);
+      const key = 'tel:' + n;
+      const prompt = n === 1 ? `Tik op ${it.art} ${it.one}.` : `Tel je mee? Tik op alle ${it.many}.`;
+      const wrap = $('<div class="counter"></div>');
+      let count = 0, done = false;
+      for (let i = 0; i < n; i++) {
+        const b = $(`<button class="cnt"><span class="emo">${it.e}</span></button>`);
+        b.addEventListener('click', async () => {
+          if (done) return;
+          if (b.classList.contains('done')) { replay(b, 'wobble'); return; }
+          count++; b.classList.add('done'); b.append($(`<span class="num">${count}</span>`)); replay(b, 'yay'); sfx.pop();
+          if (count < n) { say(cap(NUM[count])); return; }
+          done = true; record(key, true);
+          await say(cap(NUM[count])); await sleep(150);
+          sfx.yes(); sparks(wrap);
+          await say(`${cap(NUM[n])} ${n === 1 ? it.one : it.many}! Goed geteld!`); await sleep(200);
+          if (alive(sid)) resolve(key);
+        });
+        wrap.append(b);
+      }
+      view.stage.replaceChildren(wrap); view.prompt = prompt;
+      say(prompt); nudge(sid, () => done || count > 0, prompt, null);
+    });
+  }
+
+  async function reward(g) {
+    const missing = ANIMALS.filter(a => !S.farm.includes(a.id));
+    const a = missing[0];
+    if (a) { S.farm.push(a.id); save(); }
+    const el = $(`<div class="screen game reward">
+      <div class="bar"><div class="space"></div></div>
+      <div class="stage">${a ? `<div class="bigbarn">${BARN}<button class="newbie" aria-label="${a.noun}"><span class="emo">${a.e}</span></button></div>`
+        : `<div class="party">${ANIMALS.map((x, i) => `<button class="emo" style="--d:-${(i * .23).toFixed(2)}s" data-id="${x.id}">${x.e}</button>`).join('')}</div>`}
+      <div class="after"><button class="round again" aria-label="Nog een keer"><span class="emo">🔁</span></button><button class="round home" aria-label="Naar de boerderij"><span class="emo">🏠</span></button></div></div></div>`);
+    el.querySelector('.home').addEventListener('click', () => { sfx.pop(); home(); });
+    el.querySelector('.again').addEventListener('click', () => { sfx.pop(); play(g); });
+    const sid = show(el);
+    sfx.fanfare(); confetti();
+    if (a) {
+      const nb = el.querySelector('.newbie');
+      nb.addEventListener('click', () => { replay(nb.firstElementChild, 'wobble'); say(`${cap(name(a))} zegt ${a.sound}!`); });
+      await sleep(500); el.querySelector('.bigbarn').classList.add('open');
+      await sleep(600); nb.classList.add('out');
+      await say(`Hoera! Kijk eens wie er komt! ${cap(name(a))} komt op de boerderij wonen!`);
+      if (alive(sid)) await say(`${cap(name(a))} zegt ${a.sound}!`);
+    } else {
+      el.querySelectorAll('.party button').forEach(b => b.addEventListener('click', () => {
+        const x = ANIMALS.find(y => y.id === b.dataset.id); say(`${cap(name(x))} zegt ${x.sound}!`);
+      }));
+      await say('Hoera! Alle dieren zijn er. Feest op de boerderij!');
+    }
+  }
+
+  // ---------- parents ----------
+  function parents() {
+    const set = S.set;
+    const seg = (label, field, options) => `<div class="row"><span>${label}</span><span class="seg" data-field="${field}">${options.map(([v, t]) =>
+      `<button data-v="${v}" class="${String(set[field]) === String(v) ? 'on' : ''}">${t}</button>`).join('')}</span></div>`;
+    const chip = (key, inner) => `<span class="chip ${status(key)}">${inner}</span>`;
+    const days = Object.keys(S.days).sort().reverse().slice(0, 14);
+    const gameName = id => (GAMES.find(g => g.id === id) || {}).label || id;
+    const t = S.days[today()];
+    const el = $(`<div class="screen parents"><div class="wrap">
+      <div class="bar"><button class="round home" aria-label="Terug"><span class="emo">🏠</span></button><h1>Voor ouders</h1></div>
+      <div class="card"><h2>Vandaag</h2>${t && Object.keys(t.rounds).length
+        ? `<p>${Object.entries(t.rounds).map(([g, n]) => `${gameName(g)}: ${n}×`).join(' · ')}</p><p class="muted">${t.ok} keer meteen goed, ${t.help} keer met een hint.</p>`
+        : '<p class="muted">Vandaag nog niet gespeeld.</p>'}
+        <p class="muted">Dieren op de boerderij: ${S.farm.length} van ${ANIMALS.length}.</p></div>
+      <div class="card"><h2>Wat Samuel al kent</h2>
+        <p class="muted">Groen: kent hij (3 keer meteen goed, ook de laatste keren). Geel: oefent nog. Grijs: nog niet gevraagd.</p>
+        <strong>Dieren en hun geluid</strong><div class="chips">${ANIMALS.filter(a => !a.quiet).map(a => chip('dier:' + a.id, `<span class="emo">${a.e}</span>${a.noun}`)).join('')}</div>
+        <strong>Kleuren</strong><div class="chips">${COLORS.map(c => chip('kleur:' + c.id, `<span class="dot" style="background:${c.hex}"></span>${c.id}`)).join('')}</div>
+        <strong>Groot en klein</strong><div class="chips">${chip('maat:groot', 'groot')}${chip('maat:klein', 'klein')}</div>
+        <strong>Vormen</strong><div class="chips">${SHAPES.map(s => chip('vorm:' + s.id, `<span class="dot" style="background:${s.hex}"></span>${s.noun}`)).join('')}</div>
+        <strong>Tellen</strong><div class="chips">${[1, 2, 3, 4, 5].map(n => chip('tel:' + n, `${n} tellen`)).join('')}</div>
+      </div>
+      <div class="card"><h2>Instellingen</h2>
+        ${seg('Aantal keuzes', 'choices', [[2, '2'], [3, '3']])}
+        ${seg('Tellen tot', 'countTo', [[3, '3'], [5, '5']])}
+        ${seg('Kleuren', 'moreColors', [[false, '4 kleuren'], [true, '7 kleuren']])}
+        ${seg('Vormen', 'moreShapes', [[false, 'rondje, vierkant, driehoek'], [true, '+ ster en hartje']])}
+        ${seg('Spreektempo', 'rate', [[0.75, 'rustig'], [0.85, 'normaal'], [0.95, 'vlot']])}
+        ${seg('Geluid', 'mute', [[false, 'aan'], [true, 'uit']])}
+        <div class="row"><span>Stem</span><select class="voice"></select><button class="btn soft test">Test</button></div>
+        <p class="muted voicehint"></p>
+      </div>
+      <div class="card"><h2>Laatste dagen</h2>${days.length ? `<table><tr><th>Dag</th><th>Gespeeld</th><th>Meteen goed / met hint</th></tr>${days.map(d => {
+        const x = S.days[d]; return `<tr><td>${d}</td><td>${Object.entries(x.rounds).map(([g, n]) => `${gameName(g)} ${n}×`).join(', ') || '–'}</td><td>${x.ok} / ${x.help}</td></tr>`;
+      }).join('')}</table>` : '<p class="muted">Nog niets gespeeld.</p>'}</div>
+      <div class="card"><h2>Opnieuw beginnen</h2><div class="row"><button class="btn soft resetfarm">Boerderij leegmaken</button><button class="btn wipe">Alles wissen</button></div>
+        <p class="muted">Alles staat alleen op dit apparaat. "Boerderij leegmaken" laat de koe staan en bewaart de voortgang.</p></div>
+      <div class="card"><h2>Tips</h2>
+        <p>De mooiste stem is een verbeterde Nederlandse iPad-stem: Instellingen → Toegankelijkheid → Gesproken materiaal → Stemmen → Nederlands → Xander of Claire (Verbeterd) downloaden.</p>
+        <p>Zet de pagina op het beginscherm (Deel → Zet op beginscherm), dan opent hij schermvullend als een app.</p>
+        <p>Speel samen: zeg de woorden na, en laat hem ook gewoon op de dieren tikken. Fouten bestaan niet; een verkeerde tik geeft een hint.</p></div>
+    </div></div>`);
+    el.querySelector('.home').addEventListener('click', home);
+    el.querySelectorAll('.seg').forEach(sg => sg.addEventListener('click', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      const f = sg.dataset.field, raw = b.dataset.v;
+      set[f] = raw === 'true' ? true : raw === 'false' ? false : Number(raw);
+      sg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); save();
+    }));
+    const sel = el.querySelector('.voice'), hint = el.querySelector('.voicehint');
+    const fill = () => {
+      loadVoices();
+      const best = bestVoice();
+      sel.innerHTML = voices.length ? voices.slice().sort((a, b) => rank(a) - rank(b)).map(v => `<option value="${v.voiceURI.replace(/"/g, '&quot;')}">${v.name} (${v.lang})</option>`).join('') : '<option>Geen Nederlandse stem gevonden</option>';
+      if (best) sel.value = best.voiceURI;
+      hint.textContent = voices.length ? '' : 'Deze iPad heeft (nog) geen Nederlandse stem. Download er een via de tip hieronder.';
+    };
+    fill(); setTimeout(fill, 700);
+    sel.addEventListener('change', () => { set.voice = sel.value; save(); });
+    el.querySelector('.test').addEventListener('click', () => say('Hoi Samuel! De koe zegt boe!'));
+    el.querySelector('.resetfarm').addEventListener('click', () => { if (confirm('Boerderij leegmaken? Alleen de koe blijft staan.')) { S.farm = ['koe']; save(); parents(); } });
+    el.querySelector('.wipe').addEventListener('click', () => { if (confirm('Alles wissen: dieren, voortgang en instellingen?')) { S = fresh(); save(); parents(); } });
+    show(el);
+  }
+
+  start();
+})();
+</script>
+</body>
+</html>
