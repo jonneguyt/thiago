@@ -84,8 +84,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 .bar { display: flex; align-items: center; gap: 10px; }
 .round { width: 64px; height: 64px; border-radius: 50%; background: var(--paper); font-size: 30px; display: grid; place-items: center; box-shadow: 0 4px 0 var(--shadow); flex: none; }
 .round:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
-.stars { flex: 1; display: flex; justify-content: center; gap: 8px; }
-.stars .ball { width: 40px; height: 40px; opacity: .25; transition: opacity .3s, transform .3s; }
+.stars { flex: 1; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.stars .ball { width: clamp(26px, 4.4vw, 40px); height: clamp(26px, 4.4vw, 40px); opacity: .25; transition: opacity .3s, transform .3s; }
 .stars .ball.on { opacity: 1; transform: scale(1.15) rotate(-12deg); }
 .lvlbtn { background: var(--paper); border-radius: 999px; padding: 8px 14px; box-shadow: 0 4px 0 var(--shadow); font-weight: 700; font-size: 16px; display: inline-flex; gap: 8px; align-items: center; }
 .question {
@@ -256,9 +256,17 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 
   // ---------- storage ----------
   const KEY = 'thiago-pokewereld-v1';
-  const fresh = () => ({ caught: [25], lvl: { tel: 1, som: 1, klank: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
+  const fresh = () => ({ v: 2, caught: [25], lvl: { tel: 1, som: 1, klank: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
   let S = fresh();
-  try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch (e) {}
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const old = JSON.parse(raw);
+      S = Object.assign(fresh(), old);
+      // v2 added 'plus over de 10' as sums level 4, so the old minus levels 4 and 5 move up one
+      if (!old.v && S.lvl.som >= 4) S.lvl.som++;
+    }
+  } catch (e) {}
   // Progress also goes to the artifact's shared store (when signed in on claude.ai), so a parent can check it from any device.
   let db = null;
   let saveTimer = null;
@@ -407,6 +415,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
   const app = document.getElementById('app');
   const ballHTML = (cls = '') => `<span class="ball ${cls}"></span>`;
   const dotsHTML = (n, max) => `<span class="dots" aria-label="niveau ${n}">${Array.from({ length: max }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`;
+  const BALLS = 8; // correct answers needed to catch a Pokémon
   const PRAISE = ['Goed zo!', 'Super!', 'Knap hoor!', 'Ja, goed!', 'Top!', 'Wauw!'];
   const numberChoices = (n, lo, hi, count = 3) => {
     const set = new Set([n]);
@@ -449,18 +458,24 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       }
     },
     som: {
-      title: 'Sommen', sub: 'Plus en min met Pokéballen', art: '2 + 3', peek: 4, maxLvl: 5,
-      levelText: ['plus tot 5', 'plus tot 10', 'plus tot 20', 'min tot 10', 'min tot 20'],
+      title: 'Sommen', sub: 'Plus en min met Pokéballen', art: '2 + 3', peek: 4, maxLvl: 7,
+      levelText: ['plus tot 5', 'plus tot 10', 'plus tot 20', 'plus over de 10', 'min tot 10', 'min tot 20', 'min over de 10'],
       make(lvl) {
-        let a, b, n, minus = lvl >= 4;
-        if (!minus) {
+        let a, b, n, minus = lvl >= 5;
+        if (lvl === 4) {
+          // crossing ten: two numbers below 10 that make more than 10 (7 + 5)
+          a = rnd(2, 9); b = rnd(Math.max(2, 11 - a), 9); n = a + b;
+        } else if (lvl === 7) {
+          // crossing ten backwards: from above 10 to below 10 (13 − 5)
+          a = rnd(11, 18); b = rnd(a - 9, 9); n = a - b;
+        } else if (!minus) {
           const max = [5, 10, 20][lvl - 1];
           n = rnd(lvl === 1 ? 2 : 4, max); a = rnd(1, n - 1); b = n - a;
           // at level 3 sometimes start from 10 or more (only when the total allows it, so b stays positive)
           if (lvl === 3 && n >= 11 && a < 10 && b < 10 && Math.random() < .5) { a = rnd(10, Math.min(15, n - 1)); b = n - a; }
         } else {
-          const max = lvl === 4 ? 10 : 20;
-          a = rnd(3, max); b = rnd(1, Math.min(a - 1, lvl === 4 ? 5 : 9)); n = a - b;
+          const max = lvl === 5 ? 10 : 20;
+          a = rnd(3, max); b = rnd(1, Math.min(a - 1, lvl === 5 ? 5 : 9)); n = a - b;
         }
         const op = minus ? '−' : '+', word = minus ? 'min' : 'plus';
         return {
@@ -567,7 +582,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         <a class="chip" id="schaak" href="schaak/" style="text-decoration:none;color:inherit;font-size:18px" hidden>♟️ Schaken</a>
         <button class="chip" id="ouders" style="font-size:16px">📈 Voortgang voor ouders</button>
       </div>
-      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 5 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag en is in te stellen bij Voortgang voor ouders. Een vraag komt pas terug na een stuk of acht andere. Dagmissie: in alle vier de spellen een Pokémon vangen geeft een bonus-Pokémon.</p>
+      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 8 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag en is in te stellen bij Voortgang voor ouders. Een vraag komt pas terug na een stuk of acht andere. Dagmissie: in alle vier de spellen een Pokémon vangen geeft een bonus-Pokémon.</p>
     </section>`);
     const tiles = el.querySelector('.tiles');
     for (const [key, g] of Object.entries(GAMES)) {
@@ -594,7 +609,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     const el = $(`<section class="screen">
       <div class="bar">
         <button class="round" id="back" aria-label="terug">🏠</button>
-        <div class="stars">${Array.from({ length: 5 }, () => ballHTML()).join('')}</div>
+        <div class="stars">${Array.from({ length: BALLS }, () => ballHTML()).join('')}</div>
         <span class="lvlbtn" id="lvl"></span>
       </div>
       <h2 class="question"><span id="q"></span><button class="round say" id="again" aria-label="nog eens horen">🔊</button></h2>
@@ -639,7 +654,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         const shown = Date.now();
         say(pick(PRAISE), PAUSE, ...cur.after).then(() => setTimeout(() => {
           if (!el.isConnected) return;
-          stars >= 5 ? show(catchScreen(key)) : next();
+          stars >= BALLS ? show(catchScreen(key)) : next();
         }, Math.max(600, 2200 - (Date.now() - shown))));
       } else {
         btn.classList.add('wrong');
