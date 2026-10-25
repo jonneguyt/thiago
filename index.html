@@ -289,11 +289,33 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => db.doc('progress/state').set({ caught: S.caught, lvl: S.lvl, updated: Date.now() }).catch(() => {}), 400);
   };
-  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const dayCache = {};
   let logChain = Promise.resolve();
   // one document per day per game: totals plus the last few mistakes
+  // the same day-per-game record is also kept on the device itself (S.log), so the parent page works on GitHub Pages
+  let lastAnswerAt = 0;
+  const localDay = key => {
+    S.log = S.log || {};
+    const id = `${today()}_${key}`;
+    return S.log[id] || (S.log[id] = { date: today(), game: key, answered: 0, firstTry: 0, wrong: 0, catches: 0, secs: 0, misses: [] });
+  };
+  const logLocal = (key, ok, firstTry, item, picked) => {
+    const d = localDay(key);
+    const now = Date.now();
+    // play time: time between answers, capped so a break doesn't count
+    if (lastAnswerAt) d.secs = (d.secs || 0) + Math.min(60, Math.round((now - lastAnswerAt) / 1000));
+    lastAnswerAt = now;
+    if (ok) { d.answered++; if (firstTry) d.firstTry++; }
+    else { d.wrong++; d.misses = [...d.misses, `${item} → ${picked}`].slice(-30); }
+    d.level = S.lvl[key];
+    // keep about two months of history
+    const cutoff = today(new Date(Date.now() - 62 * 864e5));
+    for (const k of Object.keys(S.log)) if (S.log[k].date < cutoff) delete S.log[k];
+    save();
+  };
   const logAnswer = (key, ok, firstTry, item, picked) => {
+    logLocal(key, ok, firstTry, item, picked);
     if (!db) return;
     logChain = logChain.then(async () => {
       const id = `${today()}_${key}`;
@@ -310,6 +332,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     });
   };
   const logCatch = (key) => {
+    localDay(key).catches++; save();
     if (!db) return;
     logChain = logChain.then(async () => {
       const id = `${today()}_${key}`;
@@ -792,6 +815,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       };
     };
     const deleteDays = async (onlyToday) => {
+      for (const k of Object.keys(S.log || {})) if (!onlyToday || k.startsWith(today())) delete S.log[k];
+      save();
       if (!db) return;
       const q = await db.collection('days').get();
       for (const d of q.docs) {
@@ -803,7 +828,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     arm(panel.querySelector('#wipetoday'), 'Wis vandaag', () => deleteDays(true));
     arm(panel.querySelector('#wipeall'), 'Wis alles', async () => {
       await deleteDays(false);
-      const keep = { voiceName: S.voiceName, focus: S.focus, mute: S.mute };
+      const keep = { voiceName: S.voiceName, focus: S.focus, mute: S.mute, log: {} };
       S = Object.assign(fresh(), keep);
       save();
     });
@@ -852,30 +877,66 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     el.querySelector('.bar').after(settingsPanel(() => show(parents())));
     const lvlLine = Object.entries(GAMES).map(([k, g]) => `<div class="kpi"><span>${g.title}</span><b>niveau ${S.lvl[k]}</b><small>${g.levelText[S.lvl[k] - 1]}</small></div>`).join('');
     const head = `<div class="kpis">${lvlLine}<div class="kpi"><span>Pokédex</span><b>${S.caught.length} / ${POKE.length}</b><small>gevangen</small></div></div>`;
-    if (!db) {
-      box.innerHTML = head + `<p class="parent">De dagoverzichten worden alleen bewaard als deze pagina geopend is via de Claude-link terwijl je bent ingelogd. Op dit apparaat zie je nu alleen het huidige niveau.</p>`;
-      return el;
-    }
-    db.collection('days').orderBy('date', 'desc').limit(120).get().then(q => {
-      const rows = q.docs.map(d => d.data());
+    const render = rows => {
       if (!rows.length) { box.innerHTML = head + `<p class="parent">Nog geen oefeningen gedaan. Na de eerste antwoorden verschijnt hier per dag wat Thiago heeft gedaan.</p>`; return; }
+      rows = rows.slice().sort((a, b) => b.date.localeCompare(a.date));
+      const fmt = ds => new Date(ds + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
+      const daysAgo = n => today(new Date(Date.now() - n * 864e5));
+      const mins = secs => Math.max(1, Math.round((secs || 0) / 60));
+      // the learning notes ask for makkelijk / nog lastig rather than bare scores
+      const feelOf = (answered, firstTry) => answered < 3 ? ['even geprobeerd', 'tag-try'] : firstTry / answered >= .75 ? ['makkelijk', 'tag-easy'] : ['nog lastig', 'tag-hard'];
+      const week = rows.filter(r => r.date >= daysAgo(6)), prev = rows.filter(r => r.date < daysAgo(6) && r.date >= daysAgo(13));
+      const sum = (list, f) => list.reduce((t, r) => t + (r[f] || 0), 0);
+      const playDays = new Set(week.map(r => r.date)).size;
+
+      let html = head + `<div class="kpis">
+        <div class="kpi"><span>Deze week</span><b>${playDays} ${playDays === 1 ? 'dag' : 'dagen'}</b><small>gespeeld</small></div>
+        <div class="kpi"><span>Speeltijd deze week</span><b>${week.some(r => r.secs) ? mins(sum(week, 'secs')) + ' min' : '–'}</b><small>ongeveer</small></div>
+        <div class="kpi"><span>Vragen deze week</span><b>${sum(week, 'answered')}</b><small>${sum(week, 'answered') ? Math.round(100 * sum(week, 'firstTry') / sum(week, 'answered')) + '% in 1x goed' : ''}</small></div>
+        <div class="kpi"><span>Gevangen deze week</span><b>${sum(week, 'catches')}</b><small>Pokémon</small></div>
+      </div>`;
+
+      // per game: this week against the week before
+      html += `<h3>Per spel, deze week</h3><div class="tablewrap"><table><thead><tr><th>Spel</th><th>Hoe ging het</th><th>Vragen</th><th>In 1x goed</th><th>Vorige week</th><th>Niveau nu</th></tr></thead><tbody>`;
+      for (const [k, g] of Object.entries(GAMES)) {
+        const w = week.filter(r => r.game === k), pv = prev.filter(r => r.game === k);
+        const a = sum(w, 'answered'), f = sum(w, 'firstTry'), pa = sum(pv, 'answered'), pf = sum(pv, 'firstTry');
+        const feel = feelOf(a, f);
+        const pct = a ? Math.round(100 * f / a) : null, ppct = pa ? Math.round(100 * pf / pa) : null;
+        const trend = pct === null || ppct === null ? '' : pct > ppct + 4 ? ' ▲' : pct < ppct - 4 ? ' ▼' : ' =';
+        html += `<tr><td>${g.title}</td><td>${a ? `<span class="tag ${feel[1]}">${feel[0]}</span>` : '<small>niet gespeeld</small>'}</td><td>${a}</td><td>${pct === null ? '' : pct + '%' + trend}</td><td>${ppct === null ? '' : ppct + '%'}</td><td>${g.levelText[S.lvl[k] - 1]}</td></tr>`;
+      }
+      html += `</tbody></table></div>`;
+
+      // what keeps going wrong: count the same question over the last two weeks
+      const counts = {};
+      rows.filter(r => r.date >= daysAgo(13)).forEach(r => (r.misses || []).forEach(m => {
+        const [q, picked] = m.split(' → ');
+        const c = counts[q] || (counts[q] = { n: 0, picked: [] });
+        c.n++; if (picked && !c.picked.includes(picked)) c.picked.push(picked);
+      }));
+      const hard = Object.entries(counts).sort((a, b) => b[1].n - a[1].n).slice(0, 12);
+      if (hard.length) html += `<h3>Nog lastig (laatste 2 weken)</h3><ul class="misses">${hard.map(([q, c]) => `<li><b>${q}</b> <span>${c.n}× fout · koos ${c.picked.slice(0, 3).join(', ')}</span></li>`).join('')}</ul><p class="parent">Handig om samen nog eens te oefenen: eerst voordoen, dan samen.</p>`;
+
+      // day by day
       const byDate = {};
       rows.forEach(r => (byDate[r.date] = byDate[r.date] || []).push(r));
-      const fmt = ds => new Date(ds + 'T12:00').toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
-      let html = head + `<div class="tablewrap"><table><thead><tr><th>Dag</th><th>Spel</th><th>Hoe ging het</th><th>Vragen</th><th>In 1x goed</th><th>Fout</th><th>Niveau</th><th>Gevangen</th></tr></thead><tbody>`;
-      for (const [date, list] of Object.entries(byDate)) {
+      html += `<h3>Per dag</h3><div class="tablewrap"><table><thead><tr><th>Dag</th><th>Spel</th><th>Hoe ging het</th><th>Vragen</th><th>In 1x goed</th><th>Fout</th><th>Tijd</th><th>Niveau</th><th>Gevangen</th></tr></thead><tbody>`;
+      for (const [date, list] of Object.entries(byDate).slice(0, 21)) {
         list.forEach((r, i) => {
-          // the learning notes ask for makkelijk / nog lastig instead of scores
           const share = r.answered ? r.firstTry / r.answered : 0;
-          const feel = r.answered < 3 ? ['even geprobeerd', 'tag-try'] : share >= .75 ? ['makkelijk', 'tag-easy'] : ['nog lastig', 'tag-hard'];
-          html += `<tr>${i === 0 ? `<td rowspan="${list.length}">${fmt(date)}</td>` : ''}<td>${(GAMES[r.game] || { title: r.game }).title}</td><td><span class="tag ${feel[1]}">${feel[0]}</span></td><td>${r.answered}</td><td>${r.firstTry} <small>(${Math.round(100 * share)}%)</small></td><td>${r.wrong}</td><td>${r.level ? (GAMES[r.game] ? GAMES[r.game].levelText[r.level - 1] : r.level) : ''}</td><td>${r.catches || 0}</td></tr>`;
+          const feel = feelOf(r.answered, r.firstTry);
+          html += `<tr>${i === 0 ? `<td rowspan="${list.length}">${fmt(date)}</td>` : ''}<td>${(GAMES[r.game] || { title: r.game }).title}</td><td><span class="tag ${feel[1]}">${feel[0]}</span></td><td>${r.answered}</td><td>${r.firstTry} <small>(${Math.round(100 * share)}%)</small></td><td>${r.wrong}</td><td>${r.secs ? mins(r.secs) + ' min' : ''}</td><td>${r.level ? (GAMES[r.game] ? GAMES[r.game].levelText[r.level - 1] : r.level) : ''}</td><td>${r.catches || 0}</td></tr>`;
         });
       }
       html += `</tbody></table></div>`;
-      const recent = rows.flatMap(r => (r.misses || []).map(m => ({ m, g: r.game, date: r.date }))).slice(0, 40);
-      if (recent.length) html += `<h3>Nog lastig</h3><ul class="misses">${recent.slice(0, 24).map(x => `<li><span>${fmt(x.date)}</span> ${x.m}</li>`).join('')}</ul><p class="parent">Achter de pijl staat wat hij eerst koos. Handig om samen nog eens te oefenen, voordoen en dan samen.</p>`;
       box.innerHTML = html;
-    }).catch(() => { box.innerHTML = head + `<p class="parent">Het overzicht kon niet geladen worden. Probeer het straks opnieuw.</p>`; });
+    };
+    const local = Object.values(S.log || {});
+    if (!db) { render(local); return el; }
+    db.collection('days').orderBy('date', 'desc').limit(120).get()
+      .then(q => { const rows = q.docs.map(d => d.data()); render(rows.length ? rows : local); })
+      .catch(() => render(local));
     return el;
   }
 
