@@ -180,6 +180,26 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 .dex button { background: none; padding: 0; width: 100%; }
 
 /* ---------- parents ---------- */
+.ans.grid, .ans.bin, .ans.name { background: var(--paper); box-shadow: 0 8px 0 var(--shadow); }
+.mini { display: grid; grid-template-columns: repeat(5, 30px); gap: 6px; padding: 8px; }
+.mini i { width: 30px; height: 30px; border-radius: 50%; display: block; background: linear-gradient(var(--red) 0 44%, var(--ink) 44% 56%, #fff 56%); box-shadow: inset 0 0 0 2px var(--ink); }
+.bignum { font-size: clamp(120px, 22vw, 200px); font-weight: 800; color: var(--blue); line-height: 1; }
+.ans.bin { display: flex; flex-direction: column; align-items: stretch; min-width: 160px; padding: 0; overflow: hidden; border-radius: 28px; }
+.binl { display: block; background: var(--red); font-family: var(--read); font-weight: 700; font-size: 60px; color: #fff; line-height: 1.25; border-bottom: 6px solid var(--ink); }
+.bine { display: block; font-size: 26px; min-height: 44px; padding: 6px 8px; letter-spacing: 2px; }
+.numline { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.numline span { min-width: 92px; padding: 14px 10px; border-radius: 20px; background: var(--sky); font-size: 56px; font-weight: 800; text-align: center; }
+.numline .here { background: var(--yellow); }
+.numline .gap { background: var(--paper); box-shadow: inset 0 0 0 4px var(--red); color: var(--red); }
+.numline .gap.found { background: var(--green); color: #fff; box-shadow: none; }
+.owners { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%; }
+.owner { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.owner img { width: clamp(80px, 13vw, 120px); }
+.owner .group .ball, .share .ball { width: clamp(30px, 4.6vw, 42px); height: clamp(30px, 4.6vw, 42px); }
+.owner .group.empty { min-width: 60px; min-height: 52px; }
+.share { width: 100%; display: flex; justify-content: center; }
+.ans.name { font-size: 34px; min-width: 200px; }
+.question small { font-size: .55em; color: var(--ink-soft); font-weight: 700; }
 .pin { display: flex; flex-direction: column; align-items: center; gap: 24px; padding-block: 12px; }
 .pindots { display: flex; gap: 16px; }
 .pindots i { width: 22px; height: 22px; border-radius: 50%; background: var(--paper); box-shadow: inset 0 0 0 3px var(--ink-soft); display: block; }
@@ -251,10 +271,14 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     ['lamp','💡','l-a-m-p',2],['slak','🐌','s-l-a-k',2],['melk','🥛','m-e-l-k',2],['palm','🌴','p-a-l-m',2],
     ['tent','⛺','t-e-n-t',2],['wolk','☁️','w-o-l-k',2],['vork','🍴','v-o-r-k',2],['zeep','🧼','z-ee-p',2],
     ['haan','🐓','h-aa-n',2],['beer','🐻','b-ee-r',2],['peer','🍐','p-ee-r',2],['kerk','⛪','k-e-r-k',2],
-    ['loep','🔍','l-oe-p',2],['ijs','🍦','ij-s',2],['ei','🥚','ei',2]
+    ['loep','🔍','l-oe-p',2],['ijs','🍦','ij-s',2],['ei','🥚','ei',2],
+    ['zak','🛍️','z-a-k'],['fles','🍾','f-l-e-s',2],['fee','🧚','f-ee',2],['feest','🎉','f-ee-s-t',2],
+    ['fiets','🚲','f-ie-t-s',2],['tram','🚋','t-r-a-m',2],['taart','🎂','t-aa-r-t',2]
   ].map(([w, e, g, lvl = 1]) => ({ w, e, g: g.split('-'), lvl }));
   const wordsFor = lvl => WORDS.filter(x => x.lvl <= lvl);
-  const LETTERS = { 1: 'mnrvszbptkljhw'.split(''), 2: 'mnrvszbptkljhwd'.split('') };
+  const LETTERS = { 1: 'mnrvszbptkljhwf'.split(''), 2: 'mnrvszbptkljhwfd'.split('') };
+  // end-sound questions only use words that end in a single consonant (vis → s)
+  const endsWithConsonant = x => LETTERS[2].includes(x.g[x.g.length - 1]);
   // first-sound game only uses words that start with a single consonant
   const startsWithConsonant = x => x.g[0].length === 1 && LETTERS[2].includes(x.g[0]);
   const zoem = x => x.g.map(k => 'klank:' + k);
@@ -269,13 +293,14 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 
   // ---------- storage ----------
   const KEY = 'thiago-pokewereld-v1';
-  const fresh = () => ({ v: 2, caught: [25], lvl: { tel: 1, som: 1, klank: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
+  const fresh = () => ({ v: 2, caught: [25], lvl: { tel: 1, som: 1, hoeveel: 1, buren: 1, meer: 1, klank: 1, sorteer: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
   let S = fresh();
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const old = JSON.parse(raw);
       S = Object.assign(fresh(), old);
+      S.lvl = Object.assign(fresh().lvl, old.lvl || {});
       // v2 added 'plus over de 10' as sums level 4, so the old minus levels 4 and 5 move up one
       if (!old.v && S.lvl.som >= 4) S.lvl.som++;
     }
@@ -531,19 +556,99 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         };
       }
     },
-    klank: {
-      title: 'Eerste klank', sub: 'Met welke klank begint het?', art: 'v…', peek: 7, maxLvl: 2,
-      levelText: ['3 letters', '4 letters'],
+    hoeveel: {
+      title: 'Hoeveel is…', sub: 'Zoek het groepje bij het getal', art: '7 → ●●', peek: 39, maxLvl: 3,
+      levelText: ['tot 5', 'tot 10', 'tot 20'],
       make(lvl) {
-        let pool = wordsFor(lvl).filter(startsWithConsonant);
-        // letter of the week: about half of the words start with it
-        const focusWords = pool.filter(x => S.focus && x.g[0] === S.focus);
-        if (focusWords.length && Math.random() < .5) pool = focusWords;
-        const x = pick(pool), f = x.g[0];
-        const opts = new Set([f]);
-        for (const l of shuffle(LETTERS[lvl])) { if (opts.size >= lvl + 2) break; opts.add(l); }
+        const max = [5, 10, 20][lvl - 1];
+        const n = rnd(lvl === 1 ? 1 : 3, max);
+        const opts = numberChoices(n, 1, max + 2);
+        // groups in rows of five, like the counting game
+        const grid = k => `<span class="mini">${Array.from({ length: k }, () => '<i></i>').join('')}</span>`;
         return {
-          q: `Met welke klank begint dit woord?`, spoken: ['Met welke klank begint', x.w],
+          q: `Waar zijn er ${n}?`, spoken: [`Waar zijn er ${n}?`],
+          answer: n, choices: opts, kind: 'grid', labels: Object.fromEntries(opts.map(k => [k, grid(k)])),
+          render(stage) { stage.innerHTML = `<div class="bignum">${n}</div>`; },
+          after: [String(n)], item: `hoeveel ${n}`
+        };
+      }
+    },
+    buren: {
+      title: 'Buurgetallen', sub: 'Welk getal komt ervoor of erna?', art: '6 _ 8', peek: 143, maxLvl: 3,
+      levelText: ['erna, tot 10', 'ervoor en erna, tot 10', 'ervoor en erna, tot 20'],
+      make(lvl) {
+        const max = lvl === 3 ? 20 : 10;
+        const before = lvl > 1 && Math.random() < .5;
+        const k = before ? rnd(2, max) : rnd(1, max - 1);
+        const n = before ? k - 1 : k + 1;
+        const from = Math.max(1, Math.min(k - 2, max - 4));
+        const line = Array.from({ length: 5 }, (_, i) => from + i);
+        const word = before ? 'vóór' : 'na';
+        return {
+          q: `Welk getal komt ${word} ${k}?`, spoken: [`Welk getal komt ${before ? 'voor' : 'na'} ${k}?`],
+          answer: n, choices: numberChoices(n, 1, max),
+          render(stage) {
+            stage.innerHTML = `<div class="numline">${line.map(v => v === n ? '<span class="gap">?</span>' : `<span class="${v === k ? 'here' : ''}">${v}</span>`).join('')}</div>`;
+          },
+          reveal(stage) { const g = stage.querySelector('.gap'); g.textContent = n; g.classList.add('found'); },
+          after: [`${n} komt ${before ? 'voor' : 'na'} ${k}`], item: `${before ? 'voor' : 'na'} ${k}`
+        };
+      }
+    },
+    meer: {
+      title: 'Meer of minder', sub: 'Wie heeft er meer? Eerlijk delen', art: '● < ●●', peek: 1, maxLvl: 4,
+      levelText: ['meer, tot 5', 'meer of minder, tot 10', 'eerlijk delen met 2', 'eerlijk delen met 3'],
+      make(lvl) {
+        const ids = shuffle(S.caught.length >= 3 ? S.caught : [25, 1, 4, 7, 133]).slice(0, 3);
+        const balls = k => `<div class="group">${Array.from({ length: k }, () => ballHTML()).join('')}</div>`;
+        if (lvl <= 2) {
+          const max = lvl === 1 ? 5 : 10;
+          let a = rnd(1, max), b = rnd(1, max);
+          while (b === a) b = rnd(1, max);
+          const askMore = lvl === 1 || Math.random() < .5;
+          const [ia, ib] = ids, na = nameOf(ia), nb = nameOf(ib);
+          const winner = (askMore ? a > b : a < b) ? na : nb;
+          const card = (id, k) => `<div class="owner"><img src="${IMG}${id}.png" alt="">${balls(k)}</div>`;
+          return {
+            q: `Wie heeft er ${askMore ? 'meer' : 'minder'} Pokéballen?`, spoken: [`Wie heeft er ${askMore ? 'meer' : 'minder'} Pokéballen?`],
+            answer: winner, choices: [na, nb], kind: 'name', labels: { [na]: na, [nb]: nb },
+            render(stage) { stage.innerHTML = `<div class="owners">${card(ia, a)}${card(ib, b)}</div>`; },
+            after: [`${na} heeft ${a}, ${nb} heeft ${b}`], item: `${askMore ? 'meer' : 'minder'} ${a}–${b}`
+          };
+        }
+        const p = lvl === 3 ? 2 : 3, k = rnd(1, lvl === 3 ? 5 : 3), t = k * p;
+        const who = ids.slice(0, p);
+        return {
+          q: `Verdeel ${t} Pokéballen eerlijk. Hoeveel krijgt ieder?`, spoken: [`Verdeel ${t} Pokéballen eerlijk over ${p} Pokémon. Hoeveel krijgt ieder?`],
+          answer: k, choices: numberChoices(k, 1, 10),
+          render(stage) {
+            stage.innerHTML = `<div class="share">${balls(t)}</div><div class="owners">${who.map(id => `<div class="owner"><img src="${IMG}${id}.png" alt=""><div class="group empty"></div></div>`).join('')}</div>`;
+          },
+          // show the sharing out, one ball each in turn
+          reveal(stage) {
+            const pile = [...stage.querySelectorAll('.share .ball')], bins = [...stage.querySelectorAll('.owner .group')];
+            pile.forEach((b, i) => setTimeout(() => { bins[i % p].append(b); }, 150 + i * 160));
+          },
+          after: [`Ieder krijgt ${k}`], item: `delen ${t} over ${p}`
+        };
+      }
+    },
+    klank: {
+      title: 'Klanken', sub: 'Met welke klank begint het?', art: 'v…', peek: 7, maxLvl: 4,
+      levelText: ['beginklank, 3 letters', 'beginklank, 4 letters', 'eindklank, 3 letters', 'eindklank, 4 letters'],
+      make(lvl) {
+        const end = lvl >= 3, size = lvl % 2 ? 1 : 2;
+        const at = x => end ? x.g[x.g.length - 1] : x.g[0];
+        let pool = wordsFor(size).filter(end ? endsWithConsonant : startsWithConsonant);
+        // letter of the week: about half of the words have it in the asked place
+        const focusWords = pool.filter(x => S.focus && at(x) === S.focus);
+        if (focusWords.length && Math.random() < .5) pool = focusWords;
+        const x = pick(pool), f = at(x);
+        const opts = new Set([f]);
+        for (const l of shuffle(LETTERS[size])) { if (opts.size >= size + 2) break; opts.add(l); }
+        const question = end ? 'Met welke klank eindigt' : 'Met welke klank begint';
+        return {
+          q: `${question} dit woord?`, spoken: [question, x.w],
           answer: f, choices: shuffle([...opts]), kind: 'letter',
           render(stage) {
             stage.innerHTML = '';
@@ -552,8 +657,49 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
             stage.append(pic);
             stage.append($(`<div class="hint">Tik op het plaatje om het woord te horen.</div>`));
           },
-          after: [...zoem(x), x.w], item: `${x.w} (eerste klank)`,
-          reveal(stage) { const w = $(`<div class="big-word">${wordHTML(x, true)}</div>`); stage.querySelector('.hint').replaceWith(w); zoemShow(w); }
+          after: [...zoem(x), x.w], item: `${x.w} (${end ? 'eindklank' : 'beginklank'})`,
+          reveal(stage) {
+            const w = $(`<div class="big-word">${x.g.map((g, i) => `<span class="g${(end ? i === x.g.length - 1 : i === 0) ? ' first' : ''}">${g}</span>`).join('')}</div>`);
+            stage.querySelector('.hint').replaceWith(w); zoemShow(w);
+          }
+        };
+      }
+    },
+    sorteer: {
+      title: 'Sorteren', sub: 'Welke Pokébal: met welke klank?', art: 'b · s', peek: 133, maxLvl: 4,
+      levelText: ['beginklank, 2 ballen', 'beginklank, 3 ballen', 'eindklank, 2 ballen', 'eindklank, 3 ballen'],
+      // one sorting round keeps the same balls, so the pictures pile up in them
+      start(lvl) {
+        const end = lvl >= 3, n = lvl % 2 ? 2 : 3;
+        const at = x => end ? x.g[x.g.length - 1] : x.g[0];
+        const words = WORDS.filter(end ? endsWithConsonant : startsWithConsonant);
+        const counts = {};
+        words.forEach(x => (counts[at(x)] = counts[at(x)] || []).push(x));
+        const usable = Object.keys(counts).filter(l => counts[l].length >= 3);
+        let letters = shuffle(usable).slice(0, n);
+        if (S.focus && usable.includes(S.focus) && !letters.includes(S.focus)) letters[0] = S.focus;
+        this.round = { end, at, letters: shuffle(letters), pool: letters.flatMap(l => counts[l]), bins: Object.fromEntries(letters.map(l => [l, []])) };
+      },
+      make() {
+        const r = this.round, x = pick(r.pool), f = r.at(x);
+        const question = r.end ? 'In welke Pokébal? Hoe eindigt' : 'In welke Pokébal? Hoe begint';
+        return {
+          q: `In welke Pokébal hoort dit? <small>(${r.end ? 'eindklank' : 'beginklank'})</small>`, spoken: [question, x.w],
+          answer: f, choices: r.letters, kind: 'bin',
+          labels: Object.fromEntries(r.letters.map(l => [l, `<span class="binl">${l}</span><span class="bine">${r.bins[l].slice(-6).join('')}</span>`])),
+          render(stage) {
+            stage.innerHTML = '';
+            const pic = $(`<button class="big-emoji" style="background:none" aria-label="${x.w}">${x.e}</button>`);
+            pic.onclick = () => say(x.w);
+            stage.append(pic);
+            stage.append($(`<div class="hint">Tik op het plaatje om het woord te horen.</div>`));
+          },
+          reveal(stage) {
+            r.bins[f].push(x.e);
+            const w = $(`<div class="big-word">${x.g.map((g, i) => `<span class="g${(r.end ? i === x.g.length - 1 : i === 0) ? ' first' : ''}">${g}</span>`).join('')}</div>`);
+            stage.querySelector('.hint').replaceWith(w); zoemShow(w);
+          },
+          after: [x.w], item: `${x.w} (sorteren ${r.end ? 'eind' : 'begin'})`
         };
       }
     },
@@ -592,13 +738,14 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 
   // ---------- daily mission ----------
   const RECENT = {};
+  const MISSION = 4; // different games with a catch today for the bonus
   const daily = () => { if (!S.daily || S.daily.date !== today()) S.daily = { date: today(), done: {}, bonus: false }; return S.daily; };
   const today_ = key => daily().done[key];
   const missionHTML = () => {
     const d = daily();
-    const n = Object.keys(GAMES).filter(k => d.done[k]).length;
+    const n = Math.min(MISSION, Object.keys(GAMES).filter(k => d.done[k]).length);
     return d.bonus ? `<b>Dagmissie klaar!</b> Morgen weer een nieuwe.`
-      : `<b>Dagmissie:</b> vang een Pokémon in alle 4 de spellen <span class="mdots">${Object.keys(GAMES).map(k => `<i class="${d.done[k] ? 'on' : ''}"></i>`).join('')}</span> ${n}/4`;
+      : `<b>Dagmissie:</b> vang een Pokémon in ${MISSION} verschillende spellen <span class="mdots">${Array.from({ length: MISSION }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span> ${n}/${MISSION}`;
   };
 
   // ---------- screens ----------
@@ -618,7 +765,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         <a class="chip" id="schaak" href="schaak/" style="text-decoration:none;color:inherit;font-size:18px" hidden>♟️ Schaken</a>
         <button class="chip" id="ouders" style="font-size:16px">📈 Voortgang voor ouders</button>
       </div>
-      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 8 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag en is in te stellen bij Voortgang voor ouders. Een vraag komt pas terug na een stuk of acht andere. Dagmissie: in alle vier de spellen een Pokémon vangen geeft een bonus-Pokémon.</p>
+      <p class="parent">Voor papa en mama: elk goed antwoord geeft een Pokébal. Bij 8 ballen vangt Thiago een nieuwe Pokémon. Het niveau gaat vanzelf omhoog of omlaag en is in te stellen bij Voortgang voor ouders. Een vraag komt pas terug na een stuk of acht andere. Dagmissie: in vier verschillende spellen een Pokémon vangen geeft een bonus-Pokémon.</p>
     </section>`);
     const tiles = el.querySelector('.tiles');
     for (const [key, g] of Object.entries(GAMES)) {
@@ -694,7 +841,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         }, Math.max(600, 2200 - (Date.now() - shown))));
       } else {
         btn.classList.add('wrong');
-        logAnswer(key, false, false, cur.item, cur.labels ? cur.labels[c] : c);
+        logAnswer(key, false, false, cur.item, cur.labels && !String(cur.labels[c]).includes('<') ? cur.labels[c] : c);
         misses++; streak = 0;
         if (misses >= 2 && S.lvl[key] > 1) { S.lvl[key]--; save(); paintLvl(); }
         say('Bijna! Probeer het nog eens.');
@@ -702,6 +849,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       }
     }
     paintLvl();
+    if (g.start) g.start(S.lvl[key]);
     setTimeout(next, 0);
     return el;
   }
@@ -715,7 +863,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
     if (key !== 'bonus') {
       const d = daily();
       d.done[key] = true;
-      missionDone = !d.bonus && Object.keys(GAMES).every(k => d.done[k]);
+      missionDone = !d.bonus && Object.keys(GAMES).filter(k => d.done[k]).length >= MISSION;
       if (missionDone) d.bonus = true;
     }
     save();
