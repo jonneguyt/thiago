@@ -656,7 +656,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       }
     },
     sorteer: {
-      title: 'Sorteren', sub: 'Welke begint hetzelfde?', art: 'b · s', peek: 133, maxLvl: 4,
+      title: 'Sorteren', sub: 'Welk woord begint hetzelfde?', art: 'b · s', peek: 133, maxLvl: 4,
       levelText: ['beginklank, 2 ballen', 'beginklank, 3 ballen', 'eindklank, 2 ballen', 'eindklank, 3 ballen'],
       // each Pokébal starts with one example picture; new pictures go to the ball whose
       // example sounds the same at the start (or end). One round keeps the same balls.
@@ -681,8 +681,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
         const same = r.end ? 'eindigt' : 'begint';
         const ex = r.letters.map(l => r.examples[l].w);
         return {
-          q: `Welke Pokébal ${same} hetzelfde?`,
-          spoken: [x.w, PAUSE, `Welke ${same} hetzelfde?`, ex.slice(0, -1).join(', ') + ', of ' + ex[ex.length - 1] + '?'],
+          q: `Welk woord ${same} hetzelfde?`,
+          spoken: [x.w, PAUSE, `Welk woord ${same} hetzelfde?`, ex.slice(0, -1).join(', ') + ', of ' + ex[ex.length - 1] + '?'],
           answer: f, choices: r.letters, kind: 'bin',
           labels: Object.fromEntries(r.letters.map(l => [l,
             `<span class="binl">${l}</span><span class="binx">${r.examples[l].e}</span><span class="bine">${r.bins[l].slice(-5).join('')}</span>`])),
