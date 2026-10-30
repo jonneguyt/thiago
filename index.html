@@ -186,7 +186,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 .bignum { font-size: clamp(120px, 22vw, 200px); font-weight: 800; color: var(--blue); line-height: 1; }
 .ans.bin { display: flex; flex-direction: column; align-items: stretch; min-width: 160px; padding: 0; overflow: hidden; border-radius: 28px; }
 .binl { display: block; background: var(--red); font-family: var(--read); font-weight: 700; font-size: 60px; color: #fff; line-height: 1.25; border-bottom: 6px solid var(--ink); }
-.bine { display: block; font-size: 26px; min-height: 44px; padding: 6px 8px; letter-spacing: 2px; }
+.binx { display: block; font-size: 64px; line-height: 1.2; padding-top: 6px; }
+.bine { display: block; font-size: 24px; min-height: 34px; padding: 6px 8px; letter-spacing: 2px; }
 .numline { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .numline span { min-width: 92px; padding: 14px 10px; border-radius: 20px; background: var(--sky); font-size: 56px; font-weight: 800; text-align: center; }
 .numline .here { background: var(--yellow); }
@@ -278,6 +279,8 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
   const wordsFor = lvl => WORDS.filter(x => x.lvl <= lvl);
   const LETTERS = { 1: 'mnrvszbptkljhwf'.split(''), 2: 'mnrvszbptkljhwfd'.split('') };
   // end-sound questions only use words that end in a single consonant (vis → s)
+  // pictures a child could easily name differently (lam/schaap, zak/tas): kept out of sorting
+  const UNCLEAR = ['lam', 'zak', 'pan', 'net', 'kus', 'lip', 'bot', 'been', 'wol', 'hut', 'palm', 'raam', 'kok', 'loep', 'tas', 'rok', 'pen'];
   const endsWithConsonant = x => LETTERS[2].includes(x.g[x.g.length - 1]);
   // first-sound game only uses words that start with a single consonant
   const startsWithConsonant = x => x.g[0].length === 1 && LETTERS[2].includes(x.g[0]);
@@ -666,40 +669,49 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
       }
     },
     sorteer: {
-      title: 'Sorteren', sub: 'Welke Pokébal: met welke klank?', art: 'b · s', peek: 133, maxLvl: 4,
+      title: 'Sorteren', sub: 'Welke begint hetzelfde?', art: 'b · s', peek: 133, maxLvl: 4,
       levelText: ['beginklank, 2 ballen', 'beginklank, 3 ballen', 'eindklank, 2 ballen', 'eindklank, 3 ballen'],
-      // one sorting round keeps the same balls, so the pictures pile up in them
+      // each Pokébal starts with one example picture; new pictures go to the ball whose
+      // example sounds the same at the start (or end). One round keeps the same balls.
       start(lvl) {
         const end = lvl >= 3, n = lvl % 2 ? 2 : 3;
         const at = x => end ? x.g[x.g.length - 1] : x.g[0];
-        const words = WORDS.filter(end ? endsWithConsonant : startsWithConsonant);
+        const words = WORDS.filter(x => !UNCLEAR.includes(x.w) && (end ? endsWithConsonant(x) : startsWithConsonant(x)));
         const counts = {};
         words.forEach(x => (counts[at(x)] = counts[at(x)] || []).push(x));
         const usable = Object.keys(counts).filter(l => counts[l].length >= 3);
         let letters = shuffle(usable).slice(0, n);
         if (S.focus && usable.includes(S.focus) && !letters.includes(S.focus)) letters[0] = S.focus;
-        this.round = { end, at, letters: shuffle(letters), pool: letters.flatMap(l => counts[l]), bins: Object.fromEntries(letters.map(l => [l, []])) };
+        const examples = Object.fromEntries(letters.map(l => [l, pick(counts[l])]));
+        this.round = { lvl, end, at, letters: shuffle(letters), examples,
+          pool: letters.flatMap(l => counts[l].filter(x => x !== examples[l])),
+          bins: Object.fromEntries(letters.map(l => [l, []])) };
       },
-      make() {
+      make(lvl) {
+        // the level can change halfway a round: then start with new balls
+        if (this.round.lvl !== lvl) this.start(lvl);
         const r = this.round, x = pick(r.pool), f = r.at(x);
-        const question = r.end ? 'In welke Pokébal? Hoe eindigt' : 'In welke Pokébal? Hoe begint';
+        const same = r.end ? 'eindigt' : 'begint';
+        const ex = r.letters.map(l => r.examples[l].w);
         return {
-          q: `In welke Pokébal hoort dit? <small>(${r.end ? 'eindklank' : 'beginklank'})</small>`, spoken: [question, x.w],
+          q: `Welke Pokébal ${same} hetzelfde?`,
+          spoken: [x.w, PAUSE, `Welke ${same} hetzelfde?`, ex.slice(0, -1).join(', ') + ', of ' + ex[ex.length - 1] + '?'],
           answer: f, choices: r.letters, kind: 'bin',
-          labels: Object.fromEntries(r.letters.map(l => [l, `<span class="binl">${l}</span><span class="bine">${r.bins[l].slice(-6).join('')}</span>`])),
+          labels: Object.fromEntries(r.letters.map(l => [l,
+            `<span class="binl">${l}</span><span class="binx">${r.examples[l].e}</span><span class="bine">${r.bins[l].slice(-5).join('')}</span>`])),
           render(stage) {
             stage.innerHTML = '';
             const pic = $(`<button class="big-emoji" style="background:none" aria-label="${x.w}">${x.e}</button>`);
             pic.onclick = () => say(x.w);
             stage.append(pic);
-            stage.append($(`<div class="hint">Tik op het plaatje om het woord te horen.</div>`));
+            stage.append($(`<div class="hint">Zeg het woord. In welke Pokébal past het: ${same} het net zo?</div>`));
           },
           reveal(stage) {
             r.bins[f].push(x.e);
             const w = $(`<div class="big-word">${x.g.map((g, i) => `<span class="g${(r.end ? i === x.g.length - 1 : i === 0) ? ' first' : ''}">${g}</span>`).join('')}</div>`);
             stage.querySelector('.hint').replaceWith(w); zoemShow(w);
           },
-          after: [x.w], item: `${x.w} (sorteren ${r.end ? 'eind' : 'begin'})`
+          after: [x.w, r.examples[f].w], item: `${x.w} (sorteren ${r.end ? 'eind' : 'begin'})`
         };
       }
     },
