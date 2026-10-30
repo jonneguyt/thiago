@@ -278,6 +278,13 @@ th { font-family: var(--ui); font-weight: 600; color: var(--ink-soft); }
         { n: 5, at: [3, 0], extra: [[2, 0]], foes: [[2, 1], [1, 2]], goal: 'promote', say: 'Breng de pion naar de overkant!' },
       ] },
   ];
+  // Exercises 1-2 stay on the small 5x5 board to meet the piece; from exercise 3 on the same puzzles sit on a real 8x8 board.
+  const toBig = L => {
+    const mv = a => a && a.map(([r, c]) => [r + 3, c + 2]);
+    return Object.assign({}, L, { n: 8, at: mv([L.at])[0], stars: mv(L.stars), own: mv(L.own), foes: mv(L.foes), extra: mv(L.extra) });
+  };
+  PIECES.forEach(p => p.levels.forEach((L, i) => { if (i >= 2 && L.n === 5) p.levels[i] = toBig(L); }));
+  PIECES.find(p => p.id === 'pion').levels[4] = { n: 8, at: [6, 2], extra: [[5, 2]], foes: [[5, 3], [3, 4]], goal: 'promote', say: 'Breng de pion naar de overkant!' };
   const BY = Object.fromEntries(PIECES.map(p => [p.id, p]));
   const NOT_LIKE = { toren: 'Oeps! Zo loopt de toren niet.', loper: 'Oeps! Zo loopt de loper niet.', dame: 'Oeps! Zo loopt de dame niet.',
     koning: 'Oeps! Zo loopt de koning niet.', paard: 'Oeps! Zo springt het paard niet.', pion: 'Oeps! Zo loopt de pion niet.' };
@@ -462,6 +469,7 @@ th { font-family: var(--ui); font-weight: 600; color: var(--ink-soft); }
     const next = PIECES.find(p => doneOf(p.id).length < 5);
     const el = $(`<div class="screen">
       <div class="hello">${pc('paard')}<h1>Hoi Thiago!<br><span>Schaken</span></h1><div class="spacer"></div>
+        ${framed ? '' : '<a class="chip" id="poke" href="../" style="text-decoration:none;color:inherit"><img src="../img/25.png" alt="" style="width:34px;height:34px;margin:-6px 0">Pokéwereld</a>'}
         <button class="chip" id="mute">${S.mute ? '🔇 Geluid uit' : '🔊 Geluid aan'}</button></div>
       <h2 class="sec">1. Hoe lopen ze? <small>Elk stuk 5 korte oefeningen</small></h2>
       <div class="pieces" id="learn"></div>
