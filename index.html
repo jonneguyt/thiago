@@ -198,6 +198,9 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 .owner img { width: clamp(80px, 13vw, 120px); }
 .owner .group .ball, .share .ball { width: clamp(30px, 4.6vw, 42px); height: clamp(30px, 4.6vw, 42px); }
 .owner .group.empty { min-width: 60px; min-height: 52px; }
+.owners.keer { gap: 14px; }
+.owners.keer .owner img { width: clamp(56px, 8vw, 84px); }
+.owners.keer .group .ball { width: clamp(24px, 3.6vw, 34px); height: clamp(24px, 3.6vw, 34px); }
 .share { width: 100%; display: flex; justify-content: center; }
 .ans.name { font-size: 34px; min-width: 200px; }
 .question small { font-size: .55em; color: var(--ink-soft); font-weight: 700; }
@@ -296,7 +299,7 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
 
   // ---------- storage ----------
   const KEY = 'thiago-pokewereld-v1';
-  const fresh = () => ({ v: 2, caught: [25], lvl: { tel: 1, som: 1, hoeveel: 1, buren: 1, meer: 1, klank: 1, sorteer: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
+  const fresh = () => ({ v: 2, caught: [25], lvl: { tel: 1, som: 1, keer: 1, hoeveel: 1, buren: 1, meer: 1, klank: 1, sorteer: 1, lees: 1 }, mute: false, focus: 'l', voiceName: '' });
   let S = fresh();
   try {
     const raw = localStorage.getItem(KEY);
@@ -556,6 +559,29 @@ button:focus-visible { outline: 4px solid var(--blue); outline-offset: 3px; }
             if (minus) stage.append($(`<div class="hint">${b} Pokéballen rollen weg. Hoeveel blijven er over?</div>`));
           },
           after: [`${a} ${word}`, `${b} is`, String(n)], item: `${a} ${op} ${b}`
+        };
+      }
+    },
+    keer: {
+      title: 'Keer', sub: 'Groepjes Pokéballen tellen', art: '3 × 2', peek: 25, maxLvl: 3,
+      levelText: ['groepjes van 2', 'groepjes van 2, 5 en 10', 'groepjes van 2 t/m 5 en 10'],
+      make(lvl) {
+        const size = pick([[2], [2, 5, 10], [2, 3, 4, 5, 10]][lvl - 1]);
+        const groups = rnd(size === 10 ? 1 : 2, size === 10 ? 3 : (lvl === 1 ? 4 : 5));
+        const n = groups * size;
+        const own = shuffle(S.caught.length >= 5 ? S.caught : [25, 1, 4, 7, 133, 39]);
+        const ids = Array.from({ length: groups }, (_, i) => own[i % own.length]);
+        const balls = k => `<div class="group">${Array.from({ length: k }, () => ballHTML()).join('')}</div>`;
+        const groupWord = groups === 1 ? 'groepje' : 'groepjes';
+        // from level 2 the sum is written as well, so the × sign gets a meaning
+        return {
+          q: `${groups} ${groupWord} van ${size}. Hoeveel ballen samen?${lvl > 1 ? ` <small>(${groups} × ${size})</small>` : ''}`,
+          spoken: [`${groups} ${groupWord} van ${size}. Hoeveel Pokéballen zijn het samen?`],
+          answer: n, choices: numberChoices(n, 1, Math.max(12, n + 4)),
+          render(stage) {
+            stage.innerHTML = `<div class="owners keer">${ids.map(id => `<div class="owner"><img src="${IMG}${id}.png" alt="">${balls(size)}</div>`).join('')}</div>`;
+          },
+          after: [`${groups} keer ${size} is ${n}`], item: `${groups} × ${size}`
         };
       }
     },
