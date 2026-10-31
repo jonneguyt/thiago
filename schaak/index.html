@@ -99,8 +99,8 @@ h1, h2, h3 { text-wrap: balance; }
 /* board */
 .boardwrap { display: flex; justify-content: center; }
 .frame { background: var(--wood); padding: 12px; border-radius: 22px; box-shadow: inset 0 -6px 0 var(--wood-deep), 0 10px 0 var(--shadow); width: min(100%, var(--bs)); }
-.board { --n: 5; position: relative; width: 100%; aspect-ratio: 1; max-width: 100%; display: grid; grid-template-columns: repeat(var(--n), 1fr); border-radius: 10px; overflow: hidden; }
-.sq { background: var(--light-sq); position: relative; display: grid; place-items: center; }
+.board { --n: 5; position: relative; width: 100%; aspect-ratio: 1; max-width: 100%; display: grid; grid-template-columns: repeat(var(--n), 1fr); grid-template-rows: repeat(var(--n), 1fr); border-radius: 10px; overflow: hidden; }
+.sq { background: var(--light-sq); position: relative; display: grid; place-items: center; min-height: 0; min-width: 0; padding: 0; }
 .sq.d { background: var(--dark-sq); }
 .sq .dot { width: 30%; aspect-ratio: 1; height: auto; border-radius: 50%; background: var(--dot); }
 .sq .ring { position: absolute; inset: 6%; border-radius: 50%; border: 6px solid var(--dot); }
@@ -1015,7 +1015,26 @@ th { font-family: var(--ui); font-weight: 600; color: var(--ink-soft); }
       logMiss({ piece: 'spel:' + mode, level: puzzleIndex + 1, from: sqName(rc(m.f), G.n), to: sqName(rc(m.t), G.n), why: 'geen mat' });
       const before = G;
       view.animate(m, A); G = A;
-      await tell('Bijna! Dan kan de koning nog ontsnappen. Probeer nog eens.');
+      await sleep(450);
+      // show black's way out on the board: dots on every answer, then play one of them
+      const check = inCheck(A, 'b'), answers = check ? legal(A) : legal(A).filter(r => r.p.t === 'k');
+      const demo = answers.find(r => r.t === m.t) || answers.find(r => r.p.t === 'k') || answers[0];
+      answers.forEach(r => bv.cell(...rc(r.f)).classList.add('sel'));
+      bv.marks(answers.map(r => rc(r.t)), (r, c) => !!A.sq[r * A.n + c]);
+      answers.forEach(r => bv.cell(...rc(r.f)).classList.add('sel'));
+      const line = !check ? 'De koning staat nog niet schaak. Kijk, hier kan hij heen.'
+        : demo && demo.t === m.t ? (demo.p.t === 'k' ? 'Kijk! De koning kan jouw stuk slaan.' : 'Kijk! Zwart kan jouw stuk slaan.')
+        : demo && demo.p.t === 'k' ? 'Kijk! Hier kan de koning naartoe vluchten.' : 'Kijk! Een ander stuk kan ertussen gaan staan.';
+      if (check) bv.cell(...rc(kingOf(A, 'b'))).classList.add('check');
+      await Promise.all([tell(check ? 'Bijna! Dan kan de koning nog ontsnappen.' : 'Bijna!', line), sleep(2500)]);
+      if (demo) {
+        clearMarks(); bv.cell(...rc(demo.f)).classList.add('sel');
+        await sleep(300);
+        const D = make(A, demo); view.animate(demo, D); G = D; demo.cap ? sfx.take() : sfx.move();
+        await sleep(1400);
+      }
+      clearMarks(); el.querySelectorAll('.sq.last').forEach(q => q.classList.remove('last'));
+      await tell('Probeer nog eens.');
       view.set(before); G = before; busy = false;
     }
 
